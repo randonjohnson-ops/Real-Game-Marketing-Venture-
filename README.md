@@ -33,21 +33,19 @@ A top-down open-neighborhood action-adventure. **You are the house hunter.** You
 
 Zero dependencies. One self-contained HTML file. Keyboard + touch.
 
-## 🛡️ NEW — COVERED: Storm City (fully 3D, playable now)
+## 🛡️ NEW — COVERED: Storm Trail (fully 3D, playable now)
 
-A **Three.js + Tailwind** open-city exploration prototype — non-violent, GTA-style free roam. The client plays the hero; the insurance agent guides them by radio through the aftermath of the Great Hailstorm.
+A **Crash Bandicoot-style 3D platform adventure** built on **Babylon.js** (vendored, no CDN). The client is the hero on a linear trail through a flooded valley; the insurance agent has camps along the way and *actually helps* — coaching by radio, unlocking the double jump, lowering a drawbridge to the final world.
 
-- **Architectural world** — multi-tier tower with parkour step-columns, reachable rooftops, a secret alley, a drive-under bridge with a climbable arch, and stunt ramps everywhere
-- **Parkour & agility** — nimble third-person controller with responsive jump, sprint, and ledge launches
-- **Stunt buggy** — floaty-but-punchy jump physics, handbrake drifts, and a mega ramp that launches you onto the mall roof (catch the mid-air collectible on the way)
-- **10 glowing keepsakes** in hard-to-reach places, each one a neighbor's story the agent turns into a real insurance recovery
-- **Exploration UI** — collectibles counter, compass pointing to the nearest secret with distance, and a Max Air tracker that flashes on big jumps
-- **Challenges with the agent's help** — talk to the agent NPC at Claims HQ for hints; radio coaching after every find
-- **Professional branding, uploadable** — headshot + logo uploads (stored locally), name/firm/phone/email/review-link fields, URL-param prefill (`?agent=…&firm=…&phone=…&review=…`); firm displayed prominently at the open, and the ending shows the agent's photo, logo and contact card with **Call / Email / Leave a Google review / Share with a friend** actions
-- **PC + mobile** — WASD/mouse-drag/scroll on desktop; virtual joystick + buttons on touch
-- `covered-standalone.html` is a single-file build (all libraries inlined) that can be shared as one attachment or hosted anywhere
+- **Three worlds** — Maple Shallows (stepping stones over the flood), Rooftop Rapids (sunken-house roofs, bounce pads, a narrow plank bridge), Sky Court (floating stones, moving platforms, the golden arch)
+- **Tight, forgiving controls** — coyote time, jump buffering, variable-height jumps, double jump, squash-and-stretch, landing dust; falling in water just splashes you back to the last camp
+- **One stick + one button** on mobile; **WASD/arrows + Space** on desktop — nothing else to learn
+- **Cartoon-real rendering** — bloom, ACES tone mapping, soft shadows, glow layer, animated water, drifting clouds, hand-drawn canvas textures (grass, shingles, planks, stone)
+- **10 keepsakes + coin trails** — each keepsake is a neighbor's story the agent turns into a real insurance recovery; a compass points to the nearest one
+- **Professional branding, uploadable** — headshot + logo uploads, name/firm/phone/email/review link (localStorage + URL params `?agent=…&firm=…&phone=…&review=…`); the firm opens the game, and the ending shows the agent's photo, logo and contact card with **Call / Email / Leave a Google review / Share with a friend**
+- `covered-standalone.html` — single-file build (~4.8MB, Babylon inlined) for hosting or sending as one attachment
 
-Vendored libraries (no CDN needed): `games/insurance/covered/vendor/three.min.js` (r128), `vendor/tailwind.js` (Tailwind browser build).
+Vendored libraries: `games/insurance/covered/vendor/babylon.js` (Babylon.js 5.57), `vendor/tailwind.js` (Tailwind browser build).
 
 ## Running the site
 
@@ -67,7 +65,7 @@ css/site.css                   Shared site styles
 js/site.js                     Scroll-reveal behavior
 professions/*.html             Four profession hubs (4 games each)
 games/realtor/keys/index.html  KEYS — flagship adventure (self-contained)
-games/insurance/covered/       COVERED: Storm City — 3D city adventure (Three.js)
+games/insurance/covered/       COVERED: Storm Trail — 3D platformer (Babylon.js)
 assets/                        Gameplay screenshots used as promo art
 ```
 
