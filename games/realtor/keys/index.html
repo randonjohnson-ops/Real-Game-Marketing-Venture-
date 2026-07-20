@@ -1,0 +1,1270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>KEYS — A Realtor Story Adventure</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔑</text></svg>">
+<meta name="description" content="KEYS — a cinematic story adventure where you guide the Rivera family to their dream home. Presented by your local real estate agent.">
+<style>
+  :root{
+    --ink:#0e0b1a;
+    --panel:rgba(16,12,34,.82);
+    --panel-edge:rgba(255,255,255,.14);
+    --gold:#ffc95c;
+    --gold-hot:#ffb02e;
+    --violet:#8b5cf6;
+    --rose:#fb7185;
+    --mint:#34d399;
+    --sky:#38bdf8;
+    --text:#f5f1ff;
+    --muted:#b9b0d8;
+    --radius:18px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    font-family:ui-rounded,'SF Pro Rounded','Segoe UI',system-ui,-apple-system,sans-serif;
+    background:var(--ink);color:var(--text);overflow:hidden;
+    user-select:none;-webkit-user-select:none;
+  }
+  #stage{position:fixed;inset:0;overflow:hidden}
+
+  /* ---------- Scene layers ---------- */
+  .scene-layer{position:absolute;inset:0;transition:opacity 1.1s ease}
+  .scene-layer svg{width:100%;height:100%;display:block}
+  .scene-layer.fade-out{opacity:0}
+
+  /* scene animations */
+  .cloud{animation:drift linear infinite}
+  @keyframes drift{from{transform:translateX(-220px)}to{transform:translateX(1900px)}}
+  .cloud.c2{animation-duration:95s}
+  .cloud.c1{animation-duration:70s}
+  .cloud.c3{animation-duration:120s}
+  .sunpulse{animation:sunpulse 6s ease-in-out infinite alternate;transform-origin:center}
+  @keyframes sunpulse{from{opacity:.75}to{opacity:1}}
+  .win{animation:winGlow ease-in-out infinite alternate}
+  @keyframes winGlow{from{opacity:.35}to{opacity:.95}}
+  .star{animation:twinkle ease-in-out infinite alternate}
+  @keyframes twinkle{from{opacity:.15}to{opacity:.9}}
+  .steam{animation:steam 3.4s ease-in-out infinite;transform-origin:bottom center}
+  @keyframes steam{0%{transform:translateY(0) scaleX(1);opacity:0}25%{opacity:.5}100%{transform:translateY(-46px) scaleX(1.6);opacity:0}}
+  .sway{animation:sway 5s ease-in-out infinite alternate;transform-origin:bottom center}
+  @keyframes sway{from{transform:rotate(-1.6deg)}to{transform:rotate(1.8deg)}}
+  .swing{animation:swingRock 4.5s ease-in-out infinite alternate;transform-origin:620px 470px}
+  @keyframes swingRock{from{transform:rotate(-2deg)}to{transform:rotate(2.4deg)}}
+  .tailwag{animation:wag .5s ease-in-out infinite alternate;transform-origin:left center}
+  @keyframes wag{from{transform:rotate(-14deg)}to{transform:rotate(18deg)}}
+  .soldpop{animation:soldpop .8s cubic-bezier(.2,1.6,.4,1) both;transform-origin:center}
+  @keyframes soldpop{from{transform:scale(0) rotate(-14deg);opacity:0}to{transform:scale(1) rotate(-6deg);opacity:1}}
+  .beam{animation:beam 7s ease-in-out infinite alternate}
+  @keyframes beam{from{opacity:.15}to{opacity:.45}}
+
+  /* ---------- Hotspots ---------- */
+  .hotspot{cursor:pointer}
+  .hotspot .ring{animation:hsping 1.8s ease-out infinite;transform-origin:center;transform-box:fill-box}
+  @keyframes hsping{0%{transform:scale(.5);opacity:.9}80%{transform:scale(1.7);opacity:0}100%{opacity:0}}
+  .hotspot .core{animation:hscore 1.4s ease-in-out infinite alternate;transform-box:fill-box;transform-origin:center}
+  @keyframes hscore{from{transform:scale(.85)}to{transform:scale(1.12)}}
+  .hotspot.found{pointer-events:none;opacity:0;transition:opacity .5s}
+
+  /* ---------- HUD ---------- */
+  #hud{
+    position:absolute;top:calc(12px + env(safe-area-inset-top));right:14px;z-index:30;
+    display:flex;flex-direction:column;gap:7px;align-items:flex-end;
+  }
+  .hud-card{
+    background:var(--panel);border:1px solid var(--panel-edge);backdrop-filter:blur(14px);
+    border-radius:14px;padding:9px 12px;box-shadow:0 8px 28px rgba(0,0,0,.35);
+  }
+  #stats{display:flex;flex-direction:column;gap:6px;min-width:172px}
+  .stat{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:.2px}
+  .stat .ico{width:16px;text-align:center;filter:drop-shadow(0 1px 3px rgba(0,0,0,.5))}
+  .bar{flex:1;height:8px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden}
+  .bar i{display:block;height:100%;border-radius:99px;transition:width .7s cubic-bezier(.2,.9,.3,1.2)}
+  .bar.trust i{background:linear-gradient(90deg,#fb7185,#f472b6)}
+  .bar.insight i{background:linear-gradient(90deg,#38bdf8,#818cf8)}
+  .bar.momentum i{background:linear-gradient(90deg,#fbbf24,#fb923c)}
+  #xprow{display:flex;align-items:center;gap:9px}
+  #levelchip{
+    background:linear-gradient(135deg,var(--gold),#ff9d3c);color:#3b2400;font-weight:900;
+    border-radius:10px;padding:4px 9px;font-size:12px;white-space:nowrap;box-shadow:0 3px 10px rgba(255,176,46,.4);
+  }
+  #xpbar{width:110px;height:8px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden}
+  #xpbar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),#ffe08a);border-radius:99px;transition:width .6s ease}
+  #streak{display:none;align-items:center;gap:5px;font-size:12px;font-weight:800;color:#ffb02e}
+  #streak.on{display:flex;animation:flamein .4s cubic-bezier(.2,1.6,.4,1)}
+  @keyframes flamein{from{transform:scale(.4)}to{transform:scale(1)}}
+
+  #brandbar{
+    position:absolute;top:calc(12px + env(safe-area-inset-top));left:14px;z-index:30;
+    display:flex;align-items:center;gap:10px;
+  }
+  #brandbar .hud-card{display:flex;align-items:center;gap:9px;font-size:12.5px;padding:8px 13px}
+  #brandbar .avatar{
+    width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--violet),var(--rose));
+    display:grid;place-items:center;font-weight:900;font-size:13px;color:#fff;
+  }
+  #brandbar .who b{display:block;font-size:12.5px}
+  #brandbar .who span{color:var(--muted);font-size:10.5px;font-weight:600}
+  .iconbtn{
+    background:var(--panel);border:1px solid var(--panel-edge);color:var(--text);backdrop-filter:blur(14px);
+    width:38px;height:38px;border-radius:12px;font-size:16px;cursor:pointer;transition:transform .15s;
+  }
+  .iconbtn:hover{transform:scale(1.08)}
+
+  /* ---------- Story panel ---------- */
+  #panelwrap{
+    position:absolute;left:0;right:0;bottom:0;z-index:25;
+    display:flex;justify-content:center;padding:14px;padding-bottom:calc(16px + env(safe-area-inset-bottom));
+    pointer-events:none;
+  }
+  #panel{
+    pointer-events:auto;width:min(720px,100%);
+    background:var(--panel);border:1px solid var(--panel-edge);backdrop-filter:blur(18px);
+    border-radius:22px;padding:20px 22px 18px;box-shadow:0 18px 60px rgba(0,0,0,.55);
+    transform:translateY(0);transition:transform .5s cubic-bezier(.2,.9,.3,1.1),opacity .5s;
+  }
+  #panel.hidden{transform:translateY(130%);opacity:0}
+  #speaker{
+    display:inline-flex;align-items:center;gap:8px;margin-bottom:9px;
+    font-weight:900;font-size:13px;letter-spacing:.6px;text-transform:uppercase;
+    padding:4px 12px;border-radius:99px;background:rgba(255,255,255,.09);
+  }
+  #speaker .dot{width:9px;height:9px;border-radius:50%}
+  #text{font-size:16.5px;line-height:1.62;min-height:56px;color:var(--text);font-weight:500}
+  #text em{color:var(--gold);font-style:normal;font-weight:800}
+  #choices{display:flex;flex-direction:column;gap:9px;margin-top:15px}
+  .choice{
+    text-align:left;font:inherit;font-size:14.5px;font-weight:700;color:var(--text);cursor:pointer;
+    background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.16);
+    border-radius:14px;padding:12px 16px;line-height:1.45;
+    transition:transform .16s,border-color .16s,background .16s,box-shadow .16s;
+    opacity:0;transform:translateY(12px);animation:chIn .45s cubic-bezier(.2,.9,.3,1.2) forwards;
+  }
+  .choice:nth-child(2){animation-delay:.08s}.choice:nth-child(3){animation-delay:.16s}.choice:nth-child(4){animation-delay:.24s}
+  @keyframes chIn{to{opacity:1;transform:translateY(0)}}
+  .choice:hover{
+    transform:translateY(-2px) scale(1.012);border-color:var(--gold);
+    background:rgba(255,201,92,.13);box-shadow:0 6px 24px rgba(255,176,46,.22);
+  }
+  .choice.primary{
+    background:linear-gradient(135deg,rgba(139,92,246,.35),rgba(251,113,133,.3));
+    border-color:rgba(255,255,255,.35);
+  }
+  .choice .sub{display:block;font-size:11.5px;font-weight:600;color:var(--muted);margin-top:3px}
+  #tapline{margin-top:12px;font-size:11.5px;color:var(--muted);font-weight:600;text-align:right;opacity:.8}
+
+  /* hotspot task chip */
+  #taskchip{
+    position:absolute;left:50%;top:calc(16px + env(safe-area-inset-top));transform:translateX(-50%);z-index:28;
+    background:var(--panel);border:1px solid var(--panel-edge);backdrop-filter:blur(14px);
+    border-radius:99px;padding:9px 18px;font-size:13.5px;font-weight:800;display:none;align-items:center;gap:10px;
+    box-shadow:0 8px 30px rgba(0,0,0,.4);white-space:nowrap;
+  }
+  #taskchip.on{display:flex;animation:chIn .4s both}
+  #taskchip .pips{display:flex;gap:5px}
+  #taskchip .pip{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.2);transition:all .3s}
+  #taskchip .pip.lit{background:var(--gold);box-shadow:0 0 10px var(--gold)}
+
+  /* detail toast */
+  #toast{
+    position:absolute;left:50%;top:38%;transform:translate(-50%,-50%) scale(.7);z-index:40;
+    width:min(420px,88vw);background:linear-gradient(160deg,rgba(30,22,60,.97),rgba(16,12,34,.97));
+    border:1.5px solid rgba(255,201,92,.5);border-radius:20px;padding:20px 22px;
+    box-shadow:0 24px 70px rgba(0,0,0,.6),0 0 40px rgba(255,176,46,.15);
+    opacity:0;pointer-events:none;transition:all .35s cubic-bezier(.2,1.4,.4,1);text-align:center;
+  }
+  #toast.on{opacity:1;transform:translate(-50%,-50%) scale(1);pointer-events:auto}
+  #toast .tt{font-size:12px;font-weight:900;letter-spacing:1.5px;color:var(--gold);text-transform:uppercase;margin-bottom:8px}
+  #toast .tb{font-size:15.5px;line-height:1.55;font-weight:600}
+  #toast button{
+    margin-top:14px;font:inherit;font-weight:800;font-size:13.5px;color:#3b2400;cursor:pointer;
+    background:linear-gradient(135deg,var(--gold),#ff9d3c);border:none;border-radius:12px;padding:9px 22px;
+  }
+
+  /* floating reward text */
+  .float{
+    position:absolute;z-index:60;font-weight:900;pointer-events:none;white-space:nowrap;
+    text-shadow:0 2px 10px rgba(0,0,0,.6);animation:floatUp 1.3s ease-out forwards;font-size:17px;
+  }
+  @keyframes floatUp{0%{transform:translateY(0) scale(.6);opacity:0}15%{opacity:1;transform:translateY(-8px) scale(1.15)}100%{transform:translateY(-70px) scale(1);opacity:0}}
+
+  /* timed ring */
+  #timerwrap{position:absolute;left:50%;top:calc(70px + env(safe-area-inset-top));transform:translateX(-50%);z-index:29;display:none}
+  #timerwrap.on{display:block;animation:chIn .3s both}
+  #timerwrap svg{width:74px;height:74px;transform:rotate(-90deg)}
+  #timerring{stroke:var(--gold);stroke-width:6;fill:rgba(16,12,34,.7);stroke-linecap:round;transition:stroke .3s}
+  #timernum{position:absolute;inset:0;display:grid;place-items:center;font-size:23px;font-weight:900}
+
+  /* level up + overlays */
+  #bigmsg{
+    position:absolute;inset:0;z-index:70;display:none;place-items:center;pointer-events:none;
+  }
+  #bigmsg.on{display:grid}
+  #bigmsg .inner{
+    text-align:center;animation:bigin 1.9s cubic-bezier(.2,1.3,.3,1) both;
+  }
+  @keyframes bigin{0%{transform:scale(.3);opacity:0}12%{transform:scale(1.08);opacity:1}22%{transform:scale(1)}80%{opacity:1}100%{opacity:0;transform:scale(1.05) translateY(-18px)}}
+  #bigmsg .k{font-size:15px;font-weight:900;letter-spacing:4px;color:var(--gold);text-transform:uppercase}
+  #bigmsg .t{font-size:44px;font-weight:900;background:linear-gradient(135deg,#fff,var(--gold));-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 4px 20px rgba(255,176,46,.5))}
+
+  /* ---------- Title / end screens ---------- */
+  .fullscreen{
+    position:absolute;inset:0;z-index:80;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:24px;text-align:center;transition:opacity .8s ease;overflow-y:auto;
+  }
+  .fullscreen.gone{opacity:0;pointer-events:none}
+  #title{background:radial-gradient(120% 90% at 50% 0%,#2a1b52 0%,#120c26 55%,#0a0716 100%)}
+  #titlekey{font-size:74px;animation:keyfloat 3.4s ease-in-out infinite alternate;filter:drop-shadow(0 10px 30px rgba(255,176,46,.45))}
+  @keyframes keyfloat{from{transform:translateY(-7px) rotate(-8deg)}to{transform:translateY(9px) rotate(9deg)}}
+  #title h1{
+    font-size:clamp(64px,14vw,110px);font-weight:900;letter-spacing:10px;line-height:1;margin:6px 0 10px;
+    background:linear-gradient(120deg,#fff 10%,var(--gold) 45%,#fff 60%,var(--gold) 90%);
+    background-size:200% auto;-webkit-background-clip:text;background-clip:text;color:transparent;
+    animation:shine 4s linear infinite;
+  }
+  @keyframes shine{to{background-position:200% center}}
+  #title .sub{font-size:clamp(15px,3vw,19px);color:var(--muted);font-weight:700;letter-spacing:2px;text-transform:uppercase}
+  #title .presented{
+    margin-top:26px;display:flex;align-items:center;gap:11px;background:rgba(255,255,255,.07);
+    border:1px solid var(--panel-edge);border-radius:99px;padding:9px 20px 9px 10px;font-size:14px;
+  }
+  .bigbtn{
+    margin-top:30px;font:inherit;font-size:18px;font-weight:900;letter-spacing:.5px;cursor:pointer;color:#2b1600;
+    background:linear-gradient(135deg,#ffe08a,var(--gold-hot));border:none;border-radius:99px;padding:17px 46px;
+    box-shadow:0 10px 40px rgba(255,176,46,.45),inset 0 2px 0 rgba(255,255,255,.6);
+    transition:transform .18s;animation:btnbreathe 2.6s ease-in-out infinite alternate;
+  }
+  @keyframes btnbreathe{from{box-shadow:0 10px 40px rgba(255,176,46,.35),inset 0 2px 0 rgba(255,255,255,.6)}to{box-shadow:0 10px 60px rgba(255,176,46,.65),inset 0 2px 0 rgba(255,255,255,.6)}}
+  .bigbtn:hover{transform:scale(1.06)}
+  .bigbtn:active{transform:scale(.97)}
+  #title .hint{margin-top:16px;color:var(--muted);font-size:12.5px;font-weight:600}
+
+  /* end screen */
+  #endscreen{background:rgba(10,7,22,.6);backdrop-filter:blur(3px);display:none}
+  #endscreen.on{display:flex}
+  #endcard{
+    width:min(560px,94vw);background:linear-gradient(165deg,rgba(34,24,70,.96),rgba(14,10,30,.97));
+    border:1.5px solid rgba(255,255,255,.18);border-radius:26px;padding:30px 28px;margin:auto;
+    box-shadow:0 30px 90px rgba(0,0,0,.7);animation:chIn .6s .2s both;
+  }
+  #endcard .k{font-size:12px;font-weight:900;letter-spacing:3px;color:var(--gold);text-transform:uppercase}
+  #endcard h2{font-size:31px;font-weight:900;margin:6px 0 4px}
+  #endcard .fam{color:var(--muted);font-weight:600;font-size:14px}
+  #matchring{position:relative;width:150px;height:150px;margin:20px auto 8px}
+  #matchring svg{transform:rotate(-90deg)}
+  #matchnum{position:absolute;inset:0;display:grid;place-items:center;font-size:36px;font-weight:900}
+  #matchnum span{font-size:12px;color:var(--muted);font-weight:800;letter-spacing:1px}
+  #matchlabel{font-weight:800;color:var(--gold);font-size:14.5px;letter-spacing:.5px}
+  #badges{display:flex;justify-content:center;gap:9px;flex-wrap:wrap;margin:18px 0 4px}
+  .badge{
+    display:flex;flex-direction:column;align-items:center;gap:4px;width:86px;
+    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:10px 4px;
+    animation:chIn .5s both;
+  }
+  .badge .e{font-size:23px}
+  .badge .n{font-size:10px;font-weight:800;color:var(--muted);text-align:center;line-height:1.25}
+  .badge.locked{opacity:.28;filter:grayscale(1)}
+  #perkcard{
+    margin:16px 0 0;background:linear-gradient(135deg,rgba(255,201,92,.16),rgba(251,113,133,.12));
+    border:1.5px dashed rgba(255,201,92,.6);border-radius:18px;padding:16px 18px;text-align:left;
+  }
+  #perkcard .pk{font-size:11px;font-weight:900;letter-spacing:2px;color:var(--gold);text-transform:uppercase}
+  #perkcard .pt{font-size:16.5px;font-weight:900;margin:5px 0 3px}
+  #perkcard .pd{font-size:13px;color:var(--muted);font-weight:600;line-height:1.5}
+  #perkcode{
+    display:inline-block;margin-top:9px;background:rgba(0,0,0,.35);border-radius:8px;padding:5px 12px;
+    font-family:ui-monospace,monospace;font-weight:800;font-size:14px;letter-spacing:2px;color:var(--gold);
+  }
+  #endbtns{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+  #endbtns button{
+    flex:1;min-width:150px;font:inherit;font-weight:900;font-size:14px;cursor:pointer;border-radius:14px;padding:14px 10px;
+    transition:transform .15s;
+  }
+  #endbtns button:hover{transform:translateY(-2px)}
+  #sharebtn{background:linear-gradient(135deg,var(--violet),var(--rose));color:#fff;border:none;box-shadow:0 8px 26px rgba(139,92,246,.4)}
+  #replaybtn{background:rgba(255,255,255,.08);color:var(--text);border:1.5px solid rgba(255,255,255,.2)}
+  #endfoot{margin-top:14px;font-size:11.5px;color:var(--muted);font-weight:600;line-height:1.5}
+  #endfoot a{color:var(--gold)}
+
+  #fx{position:absolute;inset:0;z-index:65;pointer-events:none}
+
+  @media (max-width:640px){
+    #stats{min-width:140px}
+    #xpbar{width:80px}
+    #text{font-size:15px}
+    #brandbar .who span{display:none}
+    #taskchip{font-size:12px;padding:8px 13px}
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="scenes"></div>
+  <canvas id="fx"></canvas>
+
+  <div id="brandbar">
+    <div class="hud-card">
+      <div class="avatar" id="agentavatar">A</div>
+      <div class="who"><b id="agentname">Alex Morgan</b><span id="agentco">Sunrise Realty</span></div>
+    </div>
+    <button class="iconbtn" id="mutebtn" title="Sound on/off">🔊</button>
+  </div>
+
+  <div id="hud">
+    <div class="hud-card" id="stats">
+      <div class="stat"><span class="ico">💛</span><div class="bar trust"><i id="b-trust"></i></div></div>
+      <div class="stat"><span class="ico">🔍</span><div class="bar insight"><i id="b-insight"></i></div></div>
+      <div class="stat"><span class="ico">⚡</span><div class="bar momentum"><i id="b-momentum"></i></div></div>
+    </div>
+    <div class="hud-card" id="xprow">
+      <span id="levelchip">LV 1</span>
+      <div id="xpbar"><i id="b-xp"></i></div>
+      <span id="streak">🔥<span id="streakn">2</span></span>
+    </div>
+  </div>
+
+  <div id="taskchip"><span id="taskt">Find the details</span><span class="pips" id="taskpips"></span></div>
+
+  <div id="timerwrap">
+    <svg viewBox="0 0 74 74"><circle id="timerring" cx="37" cy="37" r="31"></circle></svg>
+    <div id="timernum">8</div>
+  </div>
+
+  <div id="toast">
+    <div class="tt" id="toastt">Detail spotted</div>
+    <div class="tb" id="toastb"></div>
+    <button onclick="hideToast()">Nice catch ✨</button>
+  </div>
+
+  <div id="bigmsg"><div class="inner"><div class="k" id="bigk">Level up</div><div class="t" id="bigt">Trusted Guide</div></div></div>
+
+  <div id="panelwrap">
+    <div id="panel" class="hidden">
+      <div id="speaker"><span class="dot"></span><span id="speakername"></span></div>
+      <div id="text"></div>
+      <div id="choices"></div>
+      <div id="tapline">tap to continue ▸</div>
+    </div>
+  </div>
+
+  <!-- Title screen -->
+  <div class="fullscreen" id="title">
+    <div id="titlekey">🔑</div>
+    <h1>KEYS</h1>
+    <div class="sub">A Realtor Story Adventure</div>
+    <div class="presented">
+      <div class="avatar" style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--violet),var(--rose));display:grid;place-items:center;font-weight:900" id="titleavatar">A</div>
+      <div style="text-align:left"><div style="font-weight:900;font-size:14px" id="titleagent">Alex Morgan</div><div style="color:var(--muted);font-size:11.5px;font-weight:700" id="titleco">Sunrise Realty</div></div>
+    </div>
+    <button class="bigbtn" id="startbtn">Start the Story</button>
+    <div class="hint">🎧 best with sound · 5 minute story · your choices matter</div>
+  </div>
+
+  <!-- End screen -->
+  <div class="fullscreen" id="endscreen">
+    <div id="endcard">
+      <div class="k">Story complete</div>
+      <h2 id="endtitle">The Riveras are home.</h2>
+      <div class="fam" id="endsub">Willow &amp; 9th — the craftsman under the oak</div>
+      <div id="matchring">
+        <svg width="150" height="150" viewBox="0 0 150 150">
+          <circle cx="75" cy="75" r="64" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="11"/>
+          <circle id="matcharc" cx="75" cy="75" r="64" fill="none" stroke="url(#mg)" stroke-width="11" stroke-linecap="round" stroke-dasharray="402" stroke-dashoffset="402"/>
+          <defs><linearGradient id="mg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#ffc95c"/><stop offset="1" stop-color="#fb7185"/>
+          </linearGradient></defs>
+        </svg>
+        <div id="matchnum">0<span>DREAM MATCH</span></div>
+      </div>
+      <div id="matchlabel">Key Master</div>
+      <div id="badges"></div>
+      <div id="perkcard">
+        <div class="pk">🎁 Client perk unlocked</div>
+        <div class="pt" id="perktitle">Housewarming Gift Box + Free Pro Photo Session</div>
+        <div class="pd">Finished the story? That's worth celebrating. Show this to <b id="perkagent">Alex Morgan</b> to claim your perk — every client gets one, just for playing.</div>
+        <span id="perkcode">KEYS-RIVERA-2026</span>
+      </div>
+      <div id="endbtns">
+        <button id="sharebtn">💌 Share with a friend</button>
+        <button id="replaybtn">↻ Play again</button>
+      </div>
+      <div id="endfoot">Know someone starting their home search? When they finish the story, <b>you both unlock a closing-day dinner on <span id="referagent">Alex</span></b>. That's the referral magic. ✨</div>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* =====================================================================
+   KEYS — A Realtor Story Adventure
+   ClientQuest flagship demo · self-contained, no dependencies
+   Brand via URL: ?agent=Jane+Doe&brokerage=Acme+Realty
+===================================================================== */
+
+/* ---------------- Agent branding ---------------- */
+const qs = new URLSearchParams(location.search);
+const AGENT = qs.get('agent') || 'Alex Morgan';
+const BROKER = qs.get('brokerage') || 'Sunrise Realty';
+const FIRST = AGENT.split(' ')[0];
+for (const [id, v] of [['agentname',AGENT],['agentco',BROKER],['titleagent',AGENT],['titleco',BROKER],['perkagent',AGENT],['referagent',FIRST]])
+  document.getElementById(id).textContent = v;
+document.getElementById('agentavatar').textContent = AGENT[0];
+document.getElementById('titleavatar').textContent = AGENT[0];
+
+/* ---------------- Audio (WebAudio synth, no assets) ---------------- */
+let AC = null, muted = false;
+const ac = () => (AC ||= new (window.AudioContext||window.webkitAudioContext)());
+function tone(freq, t, dur, type='sine', vol=.12){
+  if (muted) return;
+  const c = ac(), o = c.createOscillator(), g = c.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(0, c.currentTime + t);
+  g.gain.linearRampToValueAtTime(vol, c.currentTime + t + .015);
+  g.gain.exponentialRampToValueAtTime(.0001, c.currentTime + t + dur);
+  o.connect(g); g.connect(c.destination);
+  o.start(c.currentTime + t); o.stop(c.currentTime + t + dur + .05);
+}
+const S = {
+  click:  () => tone(680, 0, .07, 'sine', .06),
+  good:   () => [523,659,784].forEach((f,i)=>tone(f, i*.07, .22, 'sine', .1)),
+  great:  () => [523,659,784,1047].forEach((f,i)=>tone(f, i*.06, .3, 'sine', .11)),
+  bad:    () => { tone(196,0,.25,'triangle',.1); tone(185,.08,.3,'triangle',.08); },
+  spark:  () => [1319,1760].forEach((f,i)=>tone(f, i*.05, .18, 'sine', .07)),
+  level:  () => [392,523,659,784,1047].forEach((f,i)=>tone(f, i*.09, .4, 'sine', .12)),
+  tick:   () => tone(880, 0, .05, 'square', .04),
+  win:    () => [523,659,784,1047,1319,1568].forEach((f,i)=>tone(f, i*.11, .55, 'sine', .12)),
+  type:   () => tone(1200 + Math.random()*300, 0, .015, 'sine', .012),
+};
+document.getElementById('mutebtn').onclick = e => {
+  muted = !muted;
+  e.target.textContent = muted ? '🔇' : '🔊';
+};
+
+/* ---------------- Game state ---------------- */
+const LEVELS = [
+  {xp:0,   name:'Rookie Agent'},
+  {xp:90,  name:'Trusted Guide'},
+  {xp:210, name:'Neighborhood Pro'},
+  {xp:360, name:'Deal Maker'},
+  {xp:540, name:'Key Master'},
+];
+let st;
+function resetState(){
+  st = { trust:3, insight:1, momentum:2, xp:0, level:0, streak:0,
+         flags:{}, found:0, home:null, timedFast:false, node:null };
+}
+resetState();
+
+/* ---------------- Scenes (hand-drawn SVG) ---------------- */
+const SVG_OPEN = `<svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">`;
+
+function cloudsG(color, y1=110, y2=210, y3=160){
+  return `
+  <g class="cloud c1" opacity=".8"><ellipse cx="200" cy="${y1}" rx="95" ry="30" fill="${color}"/><ellipse cx="270" cy="${y1-16}" rx="60" ry="24" fill="${color}"/></g>
+  <g class="cloud c2" opacity=".65"><ellipse cx="-40" cy="${y2}" rx="120" ry="34" fill="${color}"/><ellipse cx="50" cy="${y2-18}" rx="70" ry="26" fill="${color}"/></g>
+  <g class="cloud c3" opacity=".5"><ellipse cx="-300" cy="${y3}" rx="85" ry="26" fill="${color}"/></g>`;
+}
+function starsG(n=26){
+  let s='';
+  for(let i=0;i<n;i++){
+    const x=(i*173+97)%1600, y=(i*89+31)%330, r=1.2+(i%3);
+    s+=`<circle class="star" cx="${x}" cy="${y}" r="${r}" fill="#fff" style="animation-duration:${1.6+(i%5)*.7}s;animation-delay:${(i%7)*.3}s"/>`;
+  }
+  return s;
+}
+function winRow(x,y,cols,rows,w,h,gx,gy,color){
+  let s='';
+  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
+    const on=(r*7+c*3)%4!==0;
+    s+=`<rect x="${x+c*(w+gx)}" y="${y+r*(h+gy)}" width="${w}" height="${h}" rx="1.5" fill="${color}" ${on?`class="win" style="animation-duration:${2.5+((r+c)%4)}s;animation-delay:${((r*c)%5)*.4}s"`:'opacity=".12"'}/>`;
+  }
+  return s;
+}
+function dogG(x,y,scale=1,color='#d9a05b'){
+  return `<g transform="translate(${x},${y}) scale(${scale})">
+    <ellipse cx="0" cy="0" rx="46" ry="26" fill="${color}"/>
+    <circle cx="40" cy="-18" r="20" fill="${color}"/>
+    <ellipse cx="52" cy="-12" rx="12" ry="8" fill="${color}"/>
+    <circle cx="46" cy="-22" r="3" fill="#2b1d0e"/>
+    <ellipse cx="30" cy="-32" rx="7" ry="12" fill="#b9823f" transform="rotate(-25 30 -32)"/>
+    <path class="tailwag" d="M-42,-6 Q-64,-26 -58,-40" stroke="${color}" stroke-width="10" fill="none" stroke-linecap="round"/>
+    <rect x="-30" y="18" width="9" height="16" rx="4" fill="${color}"/><rect x="14" y="18" width="9" height="16" rx="4" fill="${color}"/>
+  </g>`;
+}
+function soldSign(x=1330,y=560){
+  return `<g class="soldpop" transform="translate(${x},${y})">
+    <rect x="-6" y="0" width="12" height="150" rx="4" fill="#7a4b22"/>
+    <rect x="-95" y="-70" width="190" height="88" rx="12" fill="#fff" stroke="#e5e0d5" stroke-width="3"/>
+    <text x="0" y="-32" text-anchor="middle" font-size="34" font-weight="900" fill="#e0475b" font-family="system-ui" letter-spacing="4">SOLD</text>
+    <text x="0" y="-4" text-anchor="middle" font-size="14" font-weight="800" fill="#6b6357" font-family="system-ui">${AGENT.toUpperCase()}</text>
+  </g>`;
+}
+
+const SCENES = {
+/* --- Morning café --- */
+cafe: () => SVG_OPEN + `
+  <defs>
+    <linearGradient id="skyC" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe9c2"/><stop offset=".5" stop-color="#ffd4a8"/><stop offset="1" stop-color="#ffb391"/>
+    </linearGradient>
+    <radialGradient id="sunC" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#fff6dd"/><stop offset=".55" stop-color="#ffd98a"/><stop offset="1" stop-color="#ffd98a" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#skyC)"/>
+  <circle class="sunpulse" cx="1230" cy="220" r="210" fill="url(#sunC)"/>
+  <circle cx="1230" cy="220" r="78" fill="#fff2c8"/>
+  ${cloudsG('#fff3e2')}
+  <ellipse cx="300" cy="880" rx="700" ry="120" fill="#e8a06c" opacity=".5"/>
+  <rect y="640" width="1600" height="260" fill="#c97c54"/>
+  <rect y="640" width="1600" height="14" fill="#b56a46"/>
+  <!-- café building -->
+  <rect x="120" y="180" width="760" height="470" rx="8" fill="#f7e6cf"/>
+  <rect x="120" y="180" width="760" height="26" fill="#e8d2b4"/>
+  <!-- awning -->
+  <g>${Array.from({length:8},(_,i)=>`<path d="M${150+i*88},360 a44,44 0 0 1 88,0 z" fill="${i%2?'#e0475b':'#fff6ea'}"/>`).join('')}
+  <rect x="150" y="330" width="704" height="32" rx="6" fill="#e0475b"/></g>
+  <!-- window -->
+  <rect x="180" y="400" width="380" height="250" rx="10" fill="#8a5a3c"/>
+  <rect x="194" y="414" width="352" height="222" rx="6" fill="#ffedb8" class="win" style="animation-duration:5s"/>
+  <text x="370" y="480" text-anchor="middle" font-family="Georgia,serif" font-size="42" font-style="italic" fill="#8a5a3c" opacity=".85">Harvest &amp; Bean</text>
+  <!-- door -->
+  <rect x="600" y="420" width="150" height="230" rx="8" fill="#8a5a3c"/>
+  <rect x="614" y="436" width="122" height="130" rx="6" fill="#ffe3a0" class="win" style="animation-duration:4s"/>
+  <circle cx="726" cy="545" r="7" fill="#ffc95c"/>
+  <!-- sign -->
+  <rect x="330" y="230" width="360" height="70" rx="14" fill="#5a3b22"/>
+  <text x="510" y="277" text-anchor="middle" font-family="system-ui" font-weight="900" font-size="34" fill="#ffc95c" letter-spacing="6">CAFÉ</text>
+  <!-- sidewalk table -->
+  <ellipse cx="1130" cy="800" rx="230" ry="34" fill="#00000022"/>
+  <rect x="1010" y="640" width="240" height="16" rx="8" fill="#7a4b22"/>
+  <rect x="1118" y="656" width="16" height="140" fill="#6a3f1c"/>
+  <path d="M1050,620 h34 v14 a17,14 0 0 1 -34,0 z" fill="#fff"/><g class="steam"><path d="M1064,606 q6,-12 0,-22" stroke="#fff" stroke-width="4" fill="none" opacity=".7" stroke-linecap="round"/></g>
+  <path d="M1160,620 h34 v14 a17,14 0 0 1 -34,0 z" fill="#fff"/><g class="steam" style="animation-delay:1.2s"><path d="M1174,606 q-6,-12 0,-22" stroke="#fff" stroke-width="4" fill="none" opacity=".7" stroke-linecap="round"/></g>
+  ${dogG(1380, 806, 1.1)}
+  <!-- planters -->
+  <g class="sway"><ellipse cx="940" cy="600" rx="34" ry="52" fill="#4e9e5f"/><ellipse cx="915" cy="628" rx="22" ry="34" fill="#3f8a50"/></g>
+  <rect x="905" y="648" width="70" height="52" rx="8" fill="#a55f38"/>
+  <g class="sway" style="animation-delay:1s"><ellipse cx="60" cy="600" rx="38" ry="58" fill="#4e9e5f"/></g>
+  <rect x="25" y="652" width="70" height="52" rx="8" fill="#a55f38"/>
+</svg>`,
+
+/* --- Downtown loft, dusk --- */
+loft: () => SVG_OPEN + `
+  <defs>
+    <linearGradient id="skyL" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1c1240"/><stop offset=".45" stop-color="#5b2d7a"/><stop offset=".75" stop-color="#c8527c"/><stop offset="1" stop-color="#ff8e6e"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#skyL)"/>
+  ${starsG(20)}
+  <circle cx="1140" cy="560" r="95" fill="#ffe1b0" class="sunpulse"/>
+  <circle cx="1140" cy="560" r="140" fill="#ffb37a" opacity=".25"/>
+  <!-- skyline -->
+  <g fill="#241536">
+    <rect x="0" y="430" width="150" height="470"/><rect x="170" y="330" width="120" height="570"/>
+    <rect x="310" y="470" width="100" height="430"/><rect x="430" y="280" width="150" height="620"/>
+    <rect x="600" y="420" width="110" height="480"/><rect x="730" y="360" width="140" height="540"/>
+    <rect x="890" y="480" width="90" height="420"/><rect x="1000" y="390" width="130" height="510"/>
+    <rect x="1150" y="450" width="120" height="450"/><rect x="1290" y="310" width="150" height="590"/>
+    <rect x="1460" y="440" width="140" height="460"/>
+  </g>
+  ${winRow(185,350,5,14,14,16,8,20,'#ffd98a')}
+  ${winRow(445,300,6,16,15,17,8,19,'#ffce7a')}
+  ${winRow(745,380,6,13,14,16,8,21,'#ffd98a')}
+  ${winRow(1305,330,6,15,15,17,8,20,'#ffce7a')}
+  ${winRow(1015,410,5,12,16,18,9,22,'#ffd98a')}
+  <!-- loft interior frame -->
+  <rect x="0" y="0" width="1600" height="70" fill="#16101f"/>
+  <rect x="0" y="820" width="1600" height="80" fill="#2a2030"/>
+  <rect x="0" y="812" width="1600" height="10" fill="#3a2c42"/>
+  <rect x="0" y="0" width="60" height="900" fill="#16101f"/><rect x="1540" y="0" width="60" height="900" fill="#16101f"/>
+  <rect x="520" y="60" width="26" height="760" fill="#16101f"/><rect x="1050" y="60" width="26" height="760" fill="#16101f"/>
+  <!-- kitchen island -->
+  <rect x="120" y="600" width="360" height="34" rx="8" fill="#d8cfc4"/>
+  <rect x="140" y="634" width="320" height="170" rx="6" fill="#3f3247"/>
+  <rect x="330" y="570" width="90" height="30" rx="4" fill="#fff" opacity=".92"/>
+  <rect x="336" y="562" width="78" height="10" rx="3" fill="#f0e9df"/>
+  <!-- plant -->
+  <g class="sway"><path d="M1420,700 q-30,-90 10,-150 M1420,700 q30,-80 -4,-160 M1420,700 q0,-100 30,-130" stroke="#3f8a50" stroke-width="14" fill="none" stroke-linecap="round"/></g>
+  <rect x="1385" y="700" width="76" height="70" rx="10" fill="#a55f38"/>
+  <!-- floor vent -->
+  <rect x="250" y="770" width="80" height="22" rx="4" fill="#1c1524"/>
+  ${Array.from({length:5},(_,i)=>`<rect x="${258+i*14}" y="774" width="6" height="14" fill="#4a3a56"/>`).join('')}
+</svg>`,
+
+/* --- Craftsman bungalow, golden hour --- */
+bungalow: (opts={}) => SVG_OPEN + `
+  <defs>
+    <linearGradient id="skyB" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8fc7e8"/><stop offset=".55" stop-color="#ffd9a0"/><stop offset="1" stop-color="#ffb27a"/>
+    </linearGradient>
+    <radialGradient id="sunB" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#fff6dd"/><stop offset="1" stop-color="#ffdf9a" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#skyB)"/>
+  <circle class="sunpulse" cx="290" cy="330" r="190" fill="url(#sunB)"/>
+  <circle cx="290" cy="330" r="66" fill="#fff3cd"/>
+  ${cloudsG('#ffffff', 100, 190, 250)}
+  <!-- lawn -->
+  <rect y="680" width="1600" height="220" fill="#7fb069"/>
+  <rect y="680" width="1600" height="12" fill="#6d9c59"/>
+  <!-- big oak -->
+  <g class="sway" style="animation-duration:8s">
+    <path d="M1330,690 q-16,-140 -60,-200 M1330,690 q10,-160 60,-230 M1330,690 q-2,-120 8,-190" stroke="#6a4a2c" stroke-width="30" fill="none" stroke-linecap="round"/>
+    <ellipse cx="1290" cy="400" rx="150" ry="110" fill="#5e9e4c"/>
+    <ellipse cx="1420" cy="360" rx="130" ry="100" fill="#6dae59"/>
+    <ellipse cx="1360" cy="290" rx="120" ry="86" fill="#7fbe69"/>
+  </g>
+  <!-- house -->
+  <g>
+    <path d="M330,470 L700,290 L1070,470 Z" fill="#8a4a3a"/>
+    <path d="M310,470 L700,278 L1090,470 L1060,470 L700,296 L340,470 Z" fill="#6e392c"/>
+    <rect x="380" y="470" width="640" height="230" fill="#e8d9b0"/>
+    <rect x="380" y="470" width="640" height="14" fill="#d6c69a"/>
+    <!-- porch -->
+    <rect x="360" y="560" width="680" height="18" rx="4" fill="#8a5a3c"/>
+    <rect x="360" y="686" width="680" height="18" rx="4" fill="#7a4b22"/>
+    <rect x="380" y="578" width="18" height="108" fill="#a8734b"/><rect x="1000" y="578" width="18" height="108" fill="#a8734b"/>
+    <rect x="560" y="578" width="18" height="108" fill="#a8734b"/><rect x="830" y="578" width="18" height="108" fill="#a8734b"/>
+    <path d="M355,560 L700,400 L1045,560 Z" fill="#a85a44"/>
+    <!-- gable window -->
+    <circle cx="700" cy="410" r="34" fill="#5a3b22"/><circle cx="700" cy="410" r="26" fill="#ffe3a0" class="win" style="animation-duration:5s"/>
+    <!-- door + windows -->
+    <rect x="650" y="580" width="100" height="106" rx="6" fill="#5a7a52"/>
+    <circle cx="738" cy="636" r="5" fill="#ffc95c"/>
+    <rect x="430" y="590" width="110" height="82" rx="6" fill="#5a3b22"/>
+    <rect x="438" y="598" width="94" height="66" rx="4" fill="#ffedb8" class="win" style="animation-duration:4s"/>
+    <rect x="870" y="590" width="110" height="82" rx="6" fill="#5a3b22"/>
+    <rect x="878" y="598" width="94" height="66" rx="4" fill="#ffe3a0" class="win" style="animation-duration:6s"/>
+    <!-- porch swing -->
+    <g class="swing">
+      <line x1="600" y1="470" x2="596" y2="560" stroke="#4a3826" stroke-width="4"/>
+      <line x1="680" y1="470" x2="684" y2="560" stroke="#4a3826" stroke-width="4"/>
+      <rect x="580" y="556" width="120" height="14" rx="6" fill="#8a5a3c"/>
+      <rect x="580" y="522" width="120" height="38" rx="6" fill="#a8734b" opacity=".9"/>
+    </g>
+    <!-- steps -->
+    <rect x="640" y="704" width="120" height="14" rx="3" fill="#c9b891"/>
+    <rect x="628" y="718" width="144" height="14" rx="3" fill="#bdab83"/>
+    <!-- crawlspace vent -->
+    <rect x="950" y="700" width="52" height="26" rx="4" fill="#3d2c1c"/>
+    ${Array.from({length:4},(_,i)=>`<rect x="${956+i*12}" y="704" width="5" height="18" fill="#6a4a2c"/>`).join('')}
+  </g>
+  <!-- picket fence -->
+  <g fill="#fdf6ea">${Array.from({length:14},(_,i)=>`<rect x="${20+i*46}" y="742" width="16" height="66" rx="4"/>`).join('')}
+  <rect x="10" y="756" width="650" height="10" rx="4"/></g>
+  <!-- gate + path -->
+  <path d="M700,730 L640,900 L860,900 L780,730 Z" fill="#d8c9a8"/>
+  <g fill="#fdf6ea">${Array.from({length:6},(_,i)=>`<rect x="${1090+i*52}" y="742" width="16" height="66" rx="4"/>`).join('')}
+  <rect x="1080" y="756" width="330" height="10" rx="4"/></g>
+  <rect x="1420" y="738" width="20" height="74" rx="4" fill="#e8dcc4"/>
+  ${dogG(1180, 830, 1.15)}
+  <!-- flowers -->
+  ${Array.from({length:8},(_,i)=>`<g class="sway" style="animation-delay:${i*.4}s"><circle cx="${80+i*70}" cy="${820+(i%3)*16}" r="9" fill="${['#fb7185','#ffc95c','#c084fc'][i%3]}"/><line x1="${80+i*70}" y1="${828+(i%3)*16}" x2="${80+i*70}" y2="${852+(i%3)*16}" stroke="#4e8a3f" stroke-width="3"/></g>`).join('')}
+  ${opts.sold ? soldSign() : ''}
+</svg>`,
+
+/* --- Fixer-upper, soft morning --- */
+fixer: (opts={}) => SVG_OPEN + `
+  <defs>
+    <linearGradient id="skyF" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9fb8d0"/><stop offset=".6" stop-color="#cfdde8"/><stop offset="1" stop-color="#e8eef2"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#skyF)"/>
+  ${cloudsG('#ffffff', 120, 220, 170)}
+  <path class="beam" d="M1050,-50 L820,900 L1250,900 L1350,-50 Z" fill="#fff8dd"/>
+  <rect y="700" width="1600" height="200" fill="#8aa06a"/>
+  <!-- wild grass tufts -->
+  ${Array.from({length:12},(_,i)=>`<g class="sway" style="animation-delay:${i*.3}s"><path d="M${60+i*135},760 q-8,-38 -16,-46 M${60+i*135},760 q0,-42 6,-52 M${60+i*135},760 q10,-36 20,-42" stroke="#71905a" stroke-width="5" fill="none" stroke-linecap="round"/></g>`).join('')}
+  <!-- house -->
+  <g>
+    <path d="M340,460 L720,270 L1100,478 Z" fill="#7a6a58"/>
+    <path d="M330,462 L720,258 L1112,480 L1082,484 L720,286 L360,468 Z" fill="#635648"/>
+    <rect x="400" y="465" width="620" height="245" fill="#b8c4c9"/>
+    <rect x="400" y="465" width="620" height="245" fill="url(#skyF)" opacity=".08"/>
+    ${Array.from({length:9},(_,i)=>`<rect x="400" y="${478+i*26}" width="620" height="3" fill="#9aa8ae" opacity=".6"/>`).join('')}
+    <!-- peeling patches -->
+    <path d="M430,500 q30,8 24,30 q-28,4 -24,-30" fill="#d9e2e5"/>
+    <path d="M950,640 q34,-6 30,26 q-36,8 -30,-26" fill="#d9e2e5"/>
+    <!-- boarded window -->
+    <rect x="450" y="520" width="110" height="86" rx="4" fill="#3d3428"/>
+    <rect x="442" y="536" width="126" height="18" rx="3" fill="#8a6f4d" transform="rotate(-7 505 545)"/>
+    <rect x="442" y="566" width="126" height="18" rx="3" fill="#7a6143" transform="rotate(5 505 575)"/>
+    <!-- good window -->
+    <rect x="850" y="520" width="110" height="86" rx="4" fill="#4a4032"/>
+    <rect x="858" y="528" width="94" height="70" rx="3" fill="#cfe4ea"/>
+    <line x1="905" y1="528" x2="905" y2="598" stroke="#4a4032" stroke-width="5"/>
+    <!-- door -->
+    <rect x="660" y="560" width="96" height="150" rx="5" fill="#6e5a40"/>
+    <circle cx="742" cy="638" r="5" fill="#c9b891"/>
+    <!-- porch roof sag -->
+    <path d="M620,560 Q720,585 800,556 L800,544 Q720,570 620,548 Z" fill="#584c3e"/>
+  </g>
+  <!-- ladder -->
+  <g transform="rotate(-14 1150 700)">
+    <rect x="1130" y="380" width="10" height="330" fill="#a8895c"/><rect x="1180" y="380" width="10" height="330" fill="#a8895c"/>
+    ${Array.from({length:7},(_,i)=>`<rect x="1130" y="${400+i*44}" width="60" height="9" rx="4" fill="#bb9a68"/>`).join('')}
+  </g>
+  <!-- rose garden -->
+  <g class="sway" style="animation-duration:6s">
+    <ellipse cx="1290" cy="700" rx="120" ry="70" fill="#4e7a3f"/>
+    <ellipse cx="1390" cy="720" rx="90" ry="56" fill="#5e8a4c"/>
+    ${Array.from({length:9},(_,i)=>`<circle cx="${1220+(i*41)%230}" cy="${660+(i*29)%90}" r="10" fill="${['#e0475b','#fb7185','#f9a8d4'][i%3]}"/>`).join('')}
+  </g>
+  <!-- rolled carpet corner (interior hint) -->
+  <ellipse cx="700" cy="860" rx="620" ry="60" fill="#000" opacity=".06"/>
+  ${opts.sold ? soldSign(300,580) : ''}
+</svg>`,
+
+/* --- Night skyline (offer night) --- */
+night: () => SVG_OPEN + `
+  <defs>
+    <linearGradient id="skyN" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0a0a24"/><stop offset=".7" stop-color="#1c1a4a"/><stop offset="1" stop-color="#33306e"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#skyN)"/>
+  ${starsG(40)}
+  <circle cx="1250" cy="190" r="70" fill="#f4f0dc"/>
+  <circle cx="1222" cy="172" r="60" fill="url(#skyN)" opacity=".92"/>
+  <g fill="#141230">
+    <rect x="0" y="470" width="180" height="430"/><rect x="200" y="360" width="140" height="540"/>
+    <rect x="360" y="500" width="110" height="400"/><rect x="490" y="300" width="160" height="600"/>
+    <rect x="670" y="440" width="120" height="460"/><rect x="810" y="380" width="150" height="520"/>
+    <rect x="980" y="490" width="100" height="410"/><rect x="1100" y="330" width="150" height="570"/>
+    <rect x="1270" y="450" width="130" height="450"/><rect x="1420" y="380" width="180" height="520"/>
+  </g>
+  ${winRow(215,380,5,15,15,17,9,19,'#ffd98a')}
+  ${winRow(505,320,6,17,15,17,9,18,'#9ecbff')}
+  ${winRow(825,400,6,14,14,16,9,20,'#ffd98a')}
+  ${winRow(1115,350,6,16,14,16,9,19,'#ffce7a')}
+  ${winRow(1435,400,7,14,14,16,9,20,'#9ecbff')}
+  <ellipse cx="800" cy="900" rx="900" ry="50" fill="#0a0920"/>
+</svg>`,
+};
+
+/* ---------------- Scene manager ---------------- */
+const scenesEl = document.getElementById('scenes');
+let currentScene = null;
+function setScene(key, opts={}){
+  if (currentScene === key && !opts.force) return;
+  currentScene = key;
+  const layer = document.createElement('div');
+  layer.className = 'scene-layer';
+  layer.style.opacity = '0';
+  layer.innerHTML = SCENES[key](opts);
+  scenesEl.appendChild(layer);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    layer.style.opacity = '1';
+    [...scenesEl.children].slice(0,-1).forEach(old=>{
+      old.classList.add('fade-out');
+      setTimeout(()=>old.remove(), 1200);
+    });
+  }));
+  return layer;
+}
+
+/* ---------------- FX: sparkles & confetti ---------------- */
+const fx = document.getElementById('fx'), ctx = fx.getContext('2d');
+let parts = [];
+function sizeFx(){ fx.width = innerWidth * devicePixelRatio; fx.height = innerHeight * devicePixelRatio; ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0); }
+sizeFx(); addEventListener('resize', sizeFx);
+const FXCOLORS = ['#ffc95c','#fb7185','#8b5cf6','#38bdf8','#34d399','#ffe08a'];
+function burst(x, y, n=22, spread=5.2){
+  for(let i=0;i<n;i++){
+    const a = Math.random()*Math.PI*2, v = 1.5+Math.random()*spread;
+    parts.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-2.4,g:.14,life:1,decay:.014+Math.random()*.02,
+      r:2.5+Math.random()*4,c:FXCOLORS[i%FXCOLORS.length],spin:Math.random()*6,vspin:(Math.random()-.5)*.35,shape:Math.random()<.5?'r':'c'});
+  }
+}
+function confettiRain(n=160){
+  for(let i=0;i<n;i++){
+    parts.push({x:Math.random()*innerWidth,y:-20-Math.random()*innerHeight*.6,vx:(Math.random()-.5)*1.6,vy:1.5+Math.random()*2.6,g:.02,
+      life:1,decay:.0018,r:3.5+Math.random()*5,c:FXCOLORS[i%FXCOLORS.length],spin:Math.random()*6,vspin:(Math.random()-.5)*.3,shape:'r',sway:Math.random()*Math.PI*2});
+  }
+}
+(function fxLoop(){
+  ctx.clearRect(0,0,innerWidth,innerHeight);
+  parts = parts.filter(p=>p.life>0 && p.y<innerHeight+30);
+  for(const p of parts){
+    p.x += p.vx + (p.sway!==undefined ? Math.sin((p.sway+=.04))*1.1 : 0);
+    p.y += p.vy; p.vy += p.g; p.life -= p.decay; p.spin += p.vspin;
+    ctx.globalAlpha = Math.max(0,Math.min(1,p.life*1.4));
+    ctx.fillStyle = p.c;
+    if(p.shape==='r'){ ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.spin); ctx.fillRect(-p.r,-p.r*.6,p.r*2,p.r*1.2); ctx.restore(); }
+    else { ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,7); ctx.fill(); }
+  }
+  ctx.globalAlpha = 1;
+  requestAnimationFrame(fxLoop);
+})();
+
+/* ---------------- HUD & rewards ---------------- */
+function setBar(id, v){ document.getElementById('b-'+id).style.width = (Math.max(0,Math.min(10,v))*10)+'%'; }
+function refreshHud(){
+  setBar('trust', st.trust); setBar('insight', st.insight); setBar('momentum', st.momentum);
+  const cur = LEVELS[st.level], next = LEVELS[st.level+1];
+  const pct = next ? Math.min(100, (st.xp-cur.xp)/(next.xp-cur.xp)*100) : 100;
+  document.getElementById('b-xp').style.width = pct+'%';
+  document.getElementById('levelchip').textContent = 'LV '+(st.level+1);
+  const sk = document.getElementById('streak');
+  if (st.streak >= 2){ sk.classList.add('on'); document.getElementById('streakn').textContent = st.streak; }
+  else sk.classList.remove('on');
+}
+function floatText(txt, color, x, y){
+  const el = document.createElement('div');
+  el.className = 'float'; el.textContent = txt; el.style.color = color;
+  el.style.left = (x ?? innerWidth-160+Math.random()*60)+'px';
+  el.style.top  = (y ?? 120+Math.random()*40)+'px';
+  document.getElementById('stage').appendChild(el);
+  setTimeout(()=>el.remove(), 1400);
+}
+function bigMsg(kicker, title, snd){
+  document.getElementById('bigk').textContent = kicker;
+  document.getElementById('bigt').textContent = title;
+  const bm = document.getElementById('bigmsg');
+  bm.classList.remove('on'); void bm.offsetWidth; bm.classList.add('on');
+  (snd||S.level)();
+  setTimeout(()=>bm.classList.remove('on'), 2000);
+}
+function addXp(amount, x, y){
+  const mult = st.streak >= 3 ? 1.5 : 1;
+  const gain = Math.round(amount*mult);
+  st.xp += gain;
+  floatText('+'+gain+' XP'+(mult>1?' 🔥':''), '#ffc95c', x, y);
+  while (LEVELS[st.level+1] && st.xp >= LEVELS[st.level+1].xp){
+    st.level++;
+    setTimeout(()=>{ bigMsg('Level '+(st.level+1), LEVELS[st.level].name); burst(innerWidth/2, innerHeight/2, 46, 7); }, 500);
+  }
+  refreshHud();
+}
+function applyEffects(fx2, x, y){
+  if (!fx2) return;
+  let d = 0;
+  for (const k of ['trust','insight','momentum']){
+    if (fx2[k]){
+      st[k] = Math.max(0, Math.min(10, st[k]+fx2[k]));
+      const ico = {trust:'💛',insight:'🔍',momentum:'⚡'}[k];
+      const col = {trust:'#fb7185',insight:'#38bdf8',momentum:'#fbbf24'}[k];
+      setTimeout(()=>floatText((fx2[k]>0?'+':'')+fx2[k]+' '+ico, col, x, y===undefined?undefined:y-34*d), d*160);
+      d++;
+    }
+  }
+  if (fx2.xp) setTimeout(()=>addXp(fx2.xp, x, y===undefined?undefined:y-34*d), d*160);
+  refreshHud();
+}
+
+/* ---------------- Story panel ---------------- */
+const panel = document.getElementById('panel'),
+      textEl = document.getElementById('text'),
+      choicesEl = document.getElementById('choices'),
+      speakerEl = document.getElementById('speaker'),
+      speakerName = document.getElementById('speakername'),
+      tapline = document.getElementById('tapline');
+const SPEAKERS = {
+  Narrator: '#a78bfa', Maya: '#fb7185', Sam: '#38bdf8', You: '#ffc95c',
+  'Listing Agent': '#f472b6', Inspector: '#34d399', 'Title Officer': '#fbbf24',
+};
+let typeTimer = null, typing = false, fullText = '', onTextDone = null;
+function typeText(html){
+  clearInterval(typeTimer); typing = true; fullText = html;
+  textEl.innerHTML = '';
+  const span = document.createElement('span'); textEl.appendChild(span);
+  const plain = html; let i = 0;
+  typeTimer = setInterval(()=>{
+    // advance through html without splitting tags
+    if (plain[i] === '<'){ i = plain.indexOf('>', i)+1; }
+    else i++;
+    if (Math.random()<.2) S.type();
+    span.innerHTML = plain.slice(0, i);
+    if (i >= plain.length){ finishType(); }
+  }, 16);
+}
+function finishType(){
+  clearInterval(typeTimer); typing = false;
+  textEl.innerHTML = fullText;
+  if (onTextDone) onTextDone();
+}
+panel.addEventListener('click', e=>{
+  if (typing){ finishType(); return; }
+  if (tapline.style.display !== 'none' && pendingNext){ S.click(); const n = pendingNext; pendingNext = null; go(n); }
+});
+let pendingNext = null;
+
+/* ---------------- Story engine ---------------- */
+function show(node){
+  st.node = node;
+  const N = STORY[node];
+  if (!N) return console.warn('missing node', node);
+  if (N.scene) setScene(N.scene, N.sceneOpts ? N.sceneOpts() : {});
+  if (N.enter) N.enter();
+  if (N.type === 'end'){ return showEnd(); }
+
+  panel.classList.remove('hidden');
+  const sp = N.speaker || 'Narrator';
+  speakerName.textContent = sp;
+  speakerEl.querySelector('.dot').style.background = SPEAKERS[sp] || '#a78bfa';
+  choicesEl.innerHTML = '';
+  tapline.style.display = 'none';
+  pendingNext = null;
+
+  const txt = typeof N.text === 'function' ? N.text() : N.text;
+  onTextDone = ()=>{
+    if (N.type === 'hotspots'){ startHotspots(N); return; }
+    if (N.type === 'timed'){ renderChoices(N); startTimer(N); return; }
+    if (N.choices){ renderChoices(N); }
+    else { tapline.style.display = 'block'; pendingNext = N.next; }
+  };
+  typeText(txt);
+}
+function go(node){ if (typeof node === 'function') node = node(); hideToast(); stopTimer(); show(node); }
+
+function renderChoices(N){
+  choicesEl.innerHTML = '';
+  const list = typeof N.choices === 'function' ? N.choices() : N.choices;
+  list.forEach(ch=>{
+    const b = document.createElement('button');
+    b.className = 'choice' + (ch.primary ? ' primary' : '');
+    b.innerHTML = ch.label + (ch.sub ? `<span class="sub">${ch.sub}</span>` : '');
+    b.onclick = e=>{
+      e.stopPropagation();
+      stopTimer();
+      const r = b.getBoundingClientRect();
+      if (ch.quality === 'best'){ S.great(); burst(r.left+r.width/2, r.top, 26); st.streak++; }
+      else if (ch.quality === 'poor'){ S.bad(); st.streak = 0; }
+      else { S.good(); }
+      applyEffects(ch.effects, r.left + r.width - 70, r.top);
+      if (ch.set) ch.set();
+      refreshHud();
+      choicesEl.querySelectorAll('.choice').forEach(x=>x.disabled=true);
+      setTimeout(()=>go(typeof ch.next==='function' ? ch.next() : ch.next), 620);
+    };
+    choicesEl.appendChild(b);
+  });
+}
+
+/* ---------------- Hotspots ---------------- */
+const taskchip = document.getElementById('taskchip');
+function startHotspots(N){
+  setTimeout(()=>panel.classList.add('hidden'), 1600);
+  const layer = scenesEl.lastElementChild, svg = layer.querySelector('svg');
+  let found = 0, total = N.spots.length;
+  document.getElementById('taskt').textContent = N.task || 'Look closer — find the details';
+  const pips = document.getElementById('taskpips');
+  pips.innerHTML = ''; for(let i=0;i<total;i++){ const p=document.createElement('span'); p.className='pip'; pips.appendChild(p); }
+  taskchip.classList.add('on');
+  N.spots.forEach((spot)=>{
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.setAttribute('class','hotspot');
+    g.innerHTML = `
+      <circle class="ring" cx="${spot.x}" cy="${spot.y}" r="30" fill="none" stroke="#ffc95c" stroke-width="4"/>
+      <circle class="core" cx="${spot.x}" cy="${spot.y}" r="17" fill="rgba(255,201,92,.35)" stroke="#ffc95c" stroke-width="3"/>
+      <text x="${spot.x}" y="${spot.y+7}" text-anchor="middle" font-size="20">✦</text>`;
+    g.addEventListener('click', e=>{
+      e.stopPropagation();
+      g.classList.add('found');
+      S.spark();
+      burst(e.clientX, e.clientY, 18, 4);
+      st.found++; found++;
+      applyEffects({insight: 1, xp: 15}, e.clientX, e.clientY);
+      if (spot.flag) st.flags[spot.flag] = true;
+      showToast(spot.title, spot.body);
+      pips.children[found-1].classList.add('lit');
+      if (found >= total){
+        setTimeout(()=>{ taskchip.classList.remove('on'); bigMsg('Sharp eye', 'All details found!', S.great); }, 900);
+        setTimeout(()=>go(N.next), 2300);
+      }
+    });
+    svg.appendChild(g);
+  });
+}
+const toast = document.getElementById('toast');
+function showToast(t, b){
+  document.getElementById('toastt').textContent = t;
+  document.getElementById('toastb').innerHTML = b;
+  toast.classList.add('on');
+}
+function hideToast(){ toast.classList.remove('on'); }
+
+/* ---------------- Timer ---------------- */
+let timerIv = null;
+function startTimer(N){
+  const wrap = document.getElementById('timerwrap'), ring = document.getElementById('timerring'), num = document.getElementById('timernum');
+  const R = 2*Math.PI*31; ring.style.strokeDasharray = R;
+  let t = N.seconds || 9; const t0 = t;
+  const started = Date.now();
+  wrap.classList.add('on');
+  num.textContent = t;
+  timerIv = setInterval(()=>{
+    const el = (Date.now()-started)/1000;
+    t = Math.max(0, t0 - el);
+    num.textContent = Math.ceil(t);
+    ring.style.strokeDashoffset = R * (1 - t/t0);
+    ring.style.stroke = t < 3 ? '#fb7185' : '#ffc95c';
+    if (t <= 3 && Math.abs(t - Math.round(t)) < .05) S.tick();
+    if (t <= 0){
+      stopTimer(); st.streak = 0; S.bad();
+      floatText('-2 ⚡ hesitated…', '#fb7185', innerWidth/2-60, 200);
+      st.momentum = Math.max(0, st.momentum-2); refreshHud();
+      go(N.timeout);
+    }
+  }, 100);
+  st._timerStart = Date.now(); st._timerLen = t0;
+}
+function stopTimer(){
+  clearInterval(timerIv); timerIv = null;
+  document.getElementById('timerwrap').classList.remove('on');
+}
+
+/* ---------------- The Story ---------------- */
+const HOMES = {
+  bungalow: {name:'the craftsman on Willow & 9th', short:'Willow & 9th — the craftsman under the oak', fit:10, flag:'crack',
+    twistFound:  "The inspector kneels at the crawlspace vent — right where <em>you</em> pointed weeks ago. \"Good news. That step-crack is settled and stable, but I'd still cure the drainage. Call it $4k.\" Because you flagged it up front, the sellers already agreed to cover it. Maya exhales for the first time in days.",
+    twistMissed: "The inspector kneels at the crawlspace vent and goes quiet. \"Step-crack in the foundation. Probably stable… probably.\" Maya's face falls. This is fixable — but you're negotiating from your heels now."},
+  loft: {name:'the Marlowe loft downtown', short:'Marlowe Lofts 7B — glass, light, skyline', fit:6, flag:'hoa',
+    twistFound:  "The resale docs land — and there it is, the HOA hike to $610/month. But you caught that on day one, and your offer already demands a year of dues from the seller. The listing agent laughs: \"You read the notice board. Nobody reads the notice board.\" Credit granted.",
+    twistMissed: "The resale docs land with a thud: HOA fees jumping to $610 a month. Sam's spreadsheet turns red. You didn't see it coming — now you're reworking the numbers at the eleventh hour."},
+  fixer: {name:'the fixer on Pinehurst', short:'Pinehurst Ave — good bones, wild roses', fit:5, flag:'roof',
+    twistFound:  "The roofer's quote comes in: $14,000. Exactly the number you warned them about at the showing — which is why your offer was $15k under asking <em>and accepted</em>. The math still works. Sam actually fist-pumps.",
+    twistMissed: "The roofer climbs down shaking his head. \"Whole roof's done. Fourteen grand.\" Nobody budgeted for that. The dream isn't dead — but the spreadsheet is bleeding."},
+};
+
+const STORY = {
+/* ---------- Chapter 1 : The Café ---------- */
+intro: { scene:'cafe', speaker:'Narrator',
+  text: `Saturday, 8:04 AM. Harvest &amp; Bean. Your nine o'clock walked in <em>fifty-six minutes early</em> — the Riveras. First-time buyers. Nervous. Hopeful. Somewhere under the table, a very large dog is pretending to be a very small dog.<br><br>This is the part of the job you love.`,
+  next:'c1' },
+c1: { speaker:'Maya',
+  text:`"Hi — sorry we're so early! Sam couldn't sleep. Our landlord just listed the house we're renting, so we're kind of doing this <em>now</em>, ready or not."`,
+  choices:[
+    {label:`"Then let's take a breath together. Forget listings for a second — tell me what home <b>feels</b> like to you."`, quality:'best', effects:{trust:2, xp:25}, next:'r1a'},
+    {label:`"No problem at all. Let's start with the practical stuff — what's your budget range?"`, quality:'ok', effects:{momentum:1, xp:12}, next:'r1b'},
+    {label:`"Perfect timing — I've got twelve listings we could hit today. Let's move."`, quality:'poor', effects:{trust:-1, momentum:1, xp:6}, next:'r1c'},
+  ]},
+r1a:{ speaker:'Maya', text:`Maya blinks — then her shoulders drop about two inches. "Nobody's asked us that." She glances at Sam. "It feels like… Sunday pancakes. A door that's <em>ours</em> to paint. A yard for Biscuit." Sam nods slowly. You're in.`, next:'c2'},
+r1b:{ speaker:'Sam', text:`Sam slides a phone across the table, a budgeting app already open. "Four-fifty, absolute ceiling. And I mean <em>ceiling</em> ceiling." Practical. Fine. But Maya's eyes say there's more to this than numbers.`, next:'c2'},
+r1c:{ speaker:'Narrator', text:`Maya's smile tightens half a millimeter — the smile of someone bracing to be <em>sold to</em>. Sam checks the time. You've got ground to make up.`, next:'c2'},
+c2: { speaker:'Sam',
+  text:`"Full disclosure — I keep a spreadsheet." Sam turns the phone around: commute times, school ratings, insurance estimates… "And, okay, this is embarrassing: there's a weighted column for <em>porch quality</em>."`,
+  choices:[
+    {label:`"Porch quality is data I can absolutely work with. Describe the dream porch."`, quality:'best', effects:{trust:2, xp:25}, next:'r2a'},
+    {label:`"Spreadsheets welcome here. Send it over — I'll match every listing against your top rows."`, quality:'ok', effects:{trust:1, insight:1, xp:15}, next:'r2b'},
+    {label:`"Schools hold value. Porches don't. Let's keep the columns that matter."`, quality:'poor', effects:{trust:-1, xp:6}, next:'r2c'},
+  ]},
+r2a:{ speaker:'Sam', text:`Sam lights up like you've asked about a firstborn. "Deep enough for two chairs and a dog bed. Western exposure. A swing would be — " Maya: "He's been designing this porch since our second date." <em>Noted. Filed. Weighted heavily.</em>`, next:'c3'},
+r2b:{ speaker:'Sam', text:`"Really? Most people laugh at the spreadsheet." Send button: pressed. You now know exactly what this family needs — on paper, anyway.`, next:'c3'},
+r2c:{ speaker:'Narrator', text:`Sam quietly closes the app. "Right. Sure." Maya studies her coffee. Efficient — but something just closed that took months to open.`, next:'c3'},
+c3: { speaker:'Narrator',
+  text:`Under the table, a seventy-pound golden head lands on your knee like a dropped anvil made of love. <em>Biscuit.</em> Maya laughs: "Whatever we buy — honestly? It's really for him."`,
+  choices:[
+    {label:`Slip Biscuit a corner of croissant and ask him, professionally, about his yard requirements.`, quality:'best', effects:{trust:2, xp:25}, set:()=>st.flags.dog=true, next:'r3a'},
+    {label:`"Then a fenced yard just moved to the top of the list."`, quality:'ok', effects:{trust:1, xp:15}, set:()=>st.flags.dog=true, next:'r3b'},
+    {label:`Discreetly relocate your croissant to higher ground.`, quality:'ok', effects:{xp:10}, next:'r3c'},
+  ]},
+r3a:{ speaker:'Narrator', text:`Biscuit accepts the croissant as rightful tribute and delivers his answer in one thunderous tail-wag that rattles both coffee cups. The Riveras are <em>howling</em>. Whatever wall was left between you — gone.`, next:'ch2'},
+r3b:{ speaker:'Maya', text:`"See, Sam? A professional." Biscuit, sensing victory, deploys his chin onto your shoe for the remainder of the meeting.`, next:'ch2'},
+r3c:{ speaker:'Narrator', text:`A wise defensive move. Biscuit watches the croissant ascend with the quiet dignity of a dog who has lost this battle before — and will win the war.`, next:'ch2'},
+ch2:{ speaker:'Narrator',
+  text:`<em>Chapter Two: The Hunt.</em><br><br>One week, forty browser tabs, and three shortlisted homes later — you pick the Riveras up on a bright Saturday. First stop: downtown.`,
+  next:'tour1' },
+
+/* ---------- Chapter 2 : Three homes ---------- */
+tour1:{ scene:'loft', speaker:'Narrator',
+  text:`<em>Marlowe Lofts, unit 7B.</em> Floor-to-ceiling glass, dusk pouring across polished concrete like spilled honey. Maya walks straight to the window and just… stands there. Sam checks his phone signal.`,
+  next:'hs1' },
+hs1:{ type:'hotspots', scene:'loft', speaker:'Narrator', task:'Great agents see what others miss',
+  text:`A great agent sees what the listing photos hide. <em>Look around — find 3 details.</em>`,
+  spots:[
+    {x:1300, y:400, title:'West-facing glass', body:`Golden-hour light for days — and July afternoons that will cook this room. Budget for blinds and check that AC.`},
+    {x:370, y:585, flag:'hoa', title:'📋 HOA notice on the counter', body:`Buried in the paper stack: <b>HOA dues rising to $610/month</b> next quarter. That quietly changes Sam's whole spreadsheet.`},
+    {x:290, y:781, title:'Floor vent, southwest corner', body:`A faint bass line hums up from the cocktail bar below. Charming at 7 PM. Less charming at 1 AM on a Tuesday.`},
+  ],
+  next:'t1react' },
+t1react:{ speaker:'Maya',
+  text:`"Okay, the light in here is <em>unfair</em>." She spins around, glowing. Sam hasn't said a word — he's doing silent math near the kitchen island.`,
+  choices:[
+    {label:`Cross to Sam quietly: "Run the numbers out loud. Let's stress-test this one together."`, quality:'best', effects:{trust:2, xp:25}, next:'t1a'},
+    {label:`"I'll be straight with you both — the light is real, and so is the HOA situation. Let's weigh both."`, quality:'best', effects:{trust:1, insight:1, xp:22}, next:'t1b'},
+    {label:`"Picture Sunday mornings up here! Skyline coffee! This one won't last the weekend."`, quality:'poor', effects:{momentum:1, trust:-1, xp:8}, next:'t1c'},
+  ]},
+t1a:{ speaker:'Sam', text:`Sam exhales, grateful. "Okay — with parking it's actually over ceiling, and that's before dues." Maya joins the huddle. You're not selling a loft; you're building a decision. They both notice.`, next:'drive1'},
+t1b:{ speaker:'Narrator', text:`Honesty lands like a keystone. Maya nods slowly; Sam actually smiles at his spreadsheet. Whatever happens with this loft, they now know you'll never let them fall in love blind.`, next:'drive1'},
+t1c:{ speaker:'Narrator', text:`Maya's glow dims a notch — pressure has a smell, and she caught it. Sam sets his jaw. <em>Careful.</em>`, next:'drive1'},
+drive1:{ scene:'bungalow', speaker:'Narrator',
+  text:`Twelve minutes east, the city exhales into oak-lined streets. <em>Willow &amp; 9th.</em> A 1938 craftsman under a tree older than the neighborhood — and Biscuit hits the window glass with his whole face.`,
+  next:'hs2' },
+hs2:{ type:'hotspots', speaker:'Narrator', task:'Walk the property like a pro',
+  text:`Maya's already halfway up the path. <em>Walk the property like a pro — find 3 details.</em>`,
+  spots:[
+    {x:634, y:540, title:'🪑 The porch', body:`Deep, west-facing, swing included. Somewhere, a weighted spreadsheet column just hit <b>10 out of 10</b>.`},
+    {x:976, y:712, flag:'crack', title:'⚠️ Hairline crack, crawlspace corner', body:`A step-crack near the foundation vent. Could be 90 years of settling. Could be <b>$18,000</b>. Either way — an inspector decides, not hope.`},
+    {x:1425, y:770, title:'🐾 Fenced quarter-acre', body:`Full fence, mature shade, squirrel-rich environment. Biscuit has already claimed it under canine law.`},
+  ],
+  next:'t2react' },
+t2react:{ speaker:'Maya',
+  text:`You find Maya on the porch swing, moving gently, eyes shut. "Don't let me fall in love yet," she says. "Is this even <em>in reach</em>?"`,
+  choices:[
+    {label:`Sit down on the rail and walk her through the real numbers — list price, taxes, what an offer would take.`, quality:'best', effects:{trust:2, momentum:1, xp:28}, next:'t2a'},
+    {label:`"It's at the top of your range, but there are levers we can pull. Let me work on it."`, quality:'ok', effects:{trust:1, xp:15}, next:'t2b'},
+    {label:`"Don't worry about the money yet — moments like this are what matter."`, quality:'poor', effects:{trust:-1, xp:6}, next:'t2c'},
+  ]},
+t2a:{ speaker:'Maya', text:`She listens to every number with her eyes still closed, swing creaking softly. When you finish: "Okay. Okay." A pause. "Thank you for not just telling me what I wanted to hear." The oak rustles like applause.`, next:'drive2'},
+t2b:{ speaker:'Narrator', text:`Maya nods, half-reassured. Levers. Sure. She keeps swinging — but a little of the magic has to share space with the math now.`, next:'drive2'},
+t2c:{ speaker:'Narrator', text:`"That's…" Maya opens her eyes. "That's exactly what our last agent said before we wasted four months." Ouch. The swing stops.`, next:'drive2'},
+drive2:{ scene:'fixer', speaker:'Narrator',
+  text:`Last stop. <em>Pinehurst Avenue.</em> Peeling paint, a porch roof with a visible sigh, roses gone gloriously feral — and a price tag <em>sixty grand under</em> everything else today. Sam is out of the car before it fully stops.`,
+  next:'hs3' },
+hs3:{ type:'hotspots', speaker:'Narrator', task:'Separate the bones from the paint',
+  text:`Cheap can be brilliant or a trap — the difference is in the details. <em>Find all 3.</em>`,
+  spots:[
+    {x:760, y:300, flag:'roof', title:'⚠️ The roofline', body:`That sag isn't charming, it's structural fatigue — this roof is at end-of-life. Quote it <b>before</b> anyone falls in love: figure ~$14k.`},
+    {x:700, y:850, title:'✨ Under the carpet', body:`You peel back a corner in the hall: <b>original oak hardwood</b>, perfect under fifty years of carpet. That's free equity hiding in plain sight.`},
+    {x:1300, y:690, title:'🌹 The rose garden', body:`Overgrown, but planted with real care decades ago. Someone loved this house once. Houses like that tend to love you back.`},
+  ],
+  next:'t3react' },
+t3react:{ speaker:'Sam',
+  text:`Sam's pacing the yard, thumbs flying. "Sixty under asking, even with a roof — the equity math is <em>beautiful</em>." Maya, quieter: "It's a lot of project. We work full-time. We've never even hung drywall."`,
+  choices:[
+    {label:`"You're both right — so let's price the truth. I'll get contractor quotes before you decide anything."`, quality:'best', effects:{trust:2, insight:1, xp:28}, next:'recommend'},
+    {label:`"Fixer-uppers reward patience. If you've got two years of weekends, this is the play."`, quality:'ok', effects:{xp:14}, next:'recommend'},
+    {label:`"Honestly? At this price, you almost can't lose. Bones like these are rare."`, quality:'poor', effects:{momentum:1, trust:-1, xp:8}, next:'recommend'},
+  ]},
+recommend:{ scene:'night', speaker:'Maya',
+  text:`Dusk. Back at the car, Biscuit snoring like a small generator in the back seat. Maya turns around from the front, and asks the question every agent waits for:<br><br>"You've seen a thousand homes. <em>Which one is ours?</em>"`,
+  choices:[
+    {label:`"The craftsman on Willow. It's not the cheapest — it's the one that's already yours."`, sub:'The porch. The yard. The oak. It fits everything they told you.', quality:'best', effects:{momentum:2, trust:1, xp:35}, set:()=>st.home='bungalow', next:'offer'},
+    {label:`"The loft. Light and location like that don't come back on the market often."`, sub:'Bold, urban, walkable — but the spreadsheet will feel it.', quality:'ok', effects:{momentum:2, xp:20}, set:()=>st.home='loft', next:'offer'},
+    {label:`"The fixer. Buy the worst house on the best block and build the dream by hand."`, sub:'The smart-money play — if they have the stomach for it.', quality:'ok', effects:{momentum:2, xp:20}, set:()=>st.home='fixer', next:'offer'},
+  ]},
+
+/* ---------- Chapter 3 : The Deal ---------- */
+offer:{ speaker:'Narrator', scene:'night',
+  text:()=>`<em>Chapter Three: The Deal.</em><br><br>Tuesday, 4:12 PM. The Riveras want ${HOMES[st.home].name}. Offer drafted, hands shaken — and then your phone lights up. The listing agent: <br><br>"Heads up — we've got <em>multiple offers</em>. Best and final by five o'clock."`,
+  next:'timed1' },
+timed1:{ type:'timed', seconds:9, speaker:'Maya', scene:'night',
+  text:`Forty-eight minutes to deadline. Maya's on the line, voice shaking: "There are OTHER offers? What do we do — what do we <em>DO?</em>"`,
+  timeout:'tmiss',
+  choices:[
+    {label:`"We stay inside your ceiling — and we make them <b>feel</b> you: clean terms, flexible close, and your letter about Biscuit's yard."`, sub:'Win on strength, not just money.', quality:'best', effects:{momentum:2, trust:1, xp:40}, set:()=>{ st.flags.heart=true; if((Date.now()-st._timerStart)/1000 <= 5) st.timedFast=true; }, next:'tbest'},
+    {label:`"Escalation clause. We automatically beat any rival offer by $3,000 — capped hard at your max."`, sub:'Mechanical. Effective. A little cold.', quality:'ok', effects:{momentum:1, xp:20}, next:'tok'},
+    {label:`"Go $25,000 over asking. Right now. Blow the others out of the water."`, sub:'Winning the house, losing the plot.', quality:'poor', effects:{trust:-2, momentum:1, xp:8}, next:'tpoor'},
+  ]},
+tbest:{ speaker:'Narrator', text:`"Okay. <em>Okay.</em>" Maya's breathing slows. "We can do that. Sam's already writing the letter — he's putting Biscuit's paw print on it." You hang up and get to work. Clean offer. Human offer. <em>Send.</em>`, next:'twist'},
+tok:{ speaker:'Narrator', text:`"That's… actually clever," Sam says, and you can hear the spreadsheet approving in the background. The clause goes in. <em>Send.</em> Now you wait like everyone else.`, next:'twist'},
+tpoor:{ speaker:'Sam', text:`Silence. Then Sam, carefully: "That's… twenty-five thousand dollars past the ceiling we agreed on." You walk it back, but something wobbled that shouldn't have. The offer goes in at max — no more. <em>Send.</em>`, next:'twist'},
+tmiss:{ speaker:'Narrator', text:`The pause stretches one beat too long — and Maya hears it. "…You don't know either." You recover, steady them, and get the offer in at their ceiling with clean terms. But confidence, once spilled, is slow to mop up.`, next:'twist'},
+twist:{ speaker:'Narrator', scene:'night',
+  text:()=>`8:51 PM. Your phone buzzes face-down on the kitchen counter. You let it sit there a full three seconds, out of respect for drama.<br><br>"Congratulations," the listing agent says. "<em>They chose your offer.</em>"` + (st.flags.heart ? ` A beat. "Between us? The letter did it. The sellers have a golden retriever too."` : ''),
+  next:'inspection' },
+inspection:{ speaker:'Inspector',
+  scene:'night',
+  text:()=> st.flags[HOMES[st.home].flag] ? HOMES[st.home].twistFound : HOMES[st.home].twistMissed,
+  next:()=>'aftertwist', choices:undefined,
+  enter(){ /* reward if they caught it early */
+    setTimeout(()=>{
+      if (st.flags[HOMES[st.home].flag]){ applyEffects({momentum:2, trust:1, xp:45}); bigMsg('Foresight pays', 'You saw it coming!', S.great); }
+      else applyEffects({momentum:-1, xp:10});
+    }, 900);
+  }},
+aftertwist:{ speaker:'Narrator',
+  text:()=> st.flags[HOMES[st.home].flag]
+    ? `Underwriting clears. Appraisal lands. Every domino you lined up weeks ago tips exactly the way you said it would. The Riveras stop asking <em>if</em> and start asking <em>when</em>.`
+    : `It costs some late nights and one very tense phone call, but you claw the deal back onto the rails. Bruised, not broken. The Riveras hold. So do you.`,
+  next:'closing' },
+closing:{ speaker:'Title Officer',
+  text:`Closing day. A conference room, a mountain of paper, and Biscuit waiting in the car with his head out the window like a figurehead. Signature by signature the stack shrinks, until the title officer slides one last page across and smiles:<br><br>"Congratulations. <em>You're homeowners.</em>"`,
+  next:'keys' },
+keys:{ speaker:'Narrator',
+  scene:null,
+  enter(){ setScene(st.home==='loft'?'loft':st.home, {sold:true, force:true}); },
+  text:()=>`Golden hour at ${HOMES[st.home].name}. You put the keys in Maya's hand — she immediately drops them because her hands are shaking, and Sam catches them, and Biscuit barks once at the sky like he's signing too.<br><br><em>This. This is why you do this job.</em>`,
+  next:'end' },
+end:{ type:'end' },
+};
+
+/* ---------------- Ending ---------------- */
+function calcMatch(){
+  const home = HOMES[st.home] || HOMES.bungalow;
+  let m = 38 + st.trust*3 + Math.min(st.insight,9)*2 + st.momentum*2 + home.fit;
+  if (st.flags[home.flag]) m += 5;
+  if (st.flags.heart) m += 4;
+  return Math.max(41, Math.min(99, Math.round(m)));
+}
+const BADGES = [
+  {e:'💛', n:'Heart Listener', earned:()=>st.trust>=8},
+  {e:'🦅', n:'Eagle Eye', earned:()=>st.found>=8},
+  {e:'🧊', n:'Cool Under Pressure', earned:()=>st.timedFast},
+  {e:'🔮', n:'Foresight', earned:()=>st.flags[HOMES[st.home]?.flag]},
+  {e:'🔑', n:'Key Master', earned:()=>true},
+];
+function showEnd(){
+  panel.classList.add('hidden');
+  S.win();
+  confettiRain(190);
+  setTimeout(()=>confettiRain(90), 1200);
+  const match = calcMatch();
+  const home = HOMES[st.home];
+  document.getElementById('endsub').textContent = home.short;
+  document.getElementById('matchlabel').textContent =
+    match>=90 ? '★ Legendary match — they found The One' :
+    match>=75 ? 'A home they\'ll grow into for years' :
+    match>=60 ? 'A solid match with a few bruises' : 'Closed — but it got messy out there';
+  const badgesEl = document.getElementById('badges');
+  badgesEl.innerHTML = '';
+  BADGES.forEach((b,i)=>{
+    const d = document.createElement('div');
+    const on = b.earned();
+    d.className = 'badge' + (on?'':' locked');
+    d.style.animationDelay = (0.9 + i*0.18)+'s';
+    d.innerHTML = `<span class="e">${b.e}</span><span class="n">${b.n}</span>`;
+    badgesEl.appendChild(d);
+    if (on) setTimeout(()=>{ const r=d.getBoundingClientRect(); burst(r.left+r.width/2, r.top+r.height/2, 10, 3); }, 900+i*180);
+  });
+  document.getElementById('endscreen').classList.add('on');
+  document.getElementById('endscreen').classList.remove('gone');
+  // animate match ring
+  const arc = document.getElementById('matcharc'), numEl = document.getElementById('matchnum');
+  const C = 402;
+  let cur = 0;
+  setTimeout(()=>{
+    const iv = setInterval(()=>{
+      cur = Math.min(match, cur + Math.max(1, Math.round(match/40)));
+      arc.style.strokeDashoffset = C*(1-cur/100);
+      numEl.firstChild.textContent = cur + '%';
+      if (cur % 10 === 0) S.tick();
+      if (cur >= match){ clearInterval(iv); if(match>=85) S.great(); }
+    }, 40);
+  }, 600);
+}
+document.getElementById('replaybtn').onclick = ()=>{
+  document.getElementById('endscreen').classList.remove('on');
+  resetState(); refreshHud();
+  go('intro');
+};
+document.getElementById('sharebtn').onclick = async ()=>{
+  const url = location.href.split('#')[0];
+  const text = `I just helped the Riveras find their dream home in KEYS 🔑 — a 5-minute story game from ${AGENT}. Your choices matter. Can you beat my ${calcMatch()}% Dream Match?`;
+  try{
+    if (navigator.share) await navigator.share({title:'KEYS — A Realtor Story Adventure', text, url});
+    else { await navigator.clipboard.writeText(text+' '+url); floatText('Link copied! 💌', '#34d399', innerWidth/2-60, innerHeight/2); }
+  }catch(e){}
+};
+
+/* ---------------- Boot ---------------- */
+setScene('cafe');
+refreshHud();
+document.getElementById('startbtn').onclick = ()=>{
+  ac(); // unlock audio
+  S.great();
+  const t = document.getElementById('title');
+  t.classList.add('gone');
+  setTimeout(()=>t.style.display='none', 900);
+  go('intro');
+};
+</script>
+</body>
+</html>
