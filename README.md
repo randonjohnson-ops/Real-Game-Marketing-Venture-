@@ -33,19 +33,18 @@ A top-down open-neighborhood action-adventure. **You are the house hunter.** You
 
 Zero dependencies. One self-contained HTML file. Keyboard + touch.
 
-## 🛡️ NEW — COVERED: Storm Trail (fully 3D, playable now)
+## 🛡️ NEW — COVERED: Run for Cover (2D arcade platformer, playable now)
 
-A **Crash Bandicoot-style 3D platform adventure** built on **Babylon.js** (vendored, no CDN). The client is the hero on a linear trail through a flooded valley; the insurance agent has camps along the way and *actually helps* — coaching by radio, unlocking the double jump, lowering a drawbridge to the final world.
+A **Super Mario-style side-scrolling arcade adventure** — pure Canvas 2D, **zero dependencies**, one self-contained ~40KB file that loads instantly on phone or desktop and is easy to text or email to a client.
 
-- **Three worlds** — Maple Shallows (stepping stones over the flood), Rooftop Rapids (sunken-house roofs, bounce pads, a narrow plank bridge), Sky Court (floating stones, moving platforms, the golden arch)
-- **Tight, forgiving controls** — coyote time, jump buffering, variable-height jumps, double jump, squash-and-stretch, landing dust; falling in water just splashes you back to the last camp
-- **One stick + one button** on mobile; **WASD/arrows + Space** on desktop — nothing else to learn
-- **Cartoon-real rendering** — bloom, ACES tone mapping, soft shadows, glow layer, animated water, drifting clouds, hand-drawn canvas textures (grass, shingles, planks, stone)
-- **10 keepsakes + coin trails** — each keepsake is a neighbor's story the agent turns into a real insurance recovery; a compass points to the nearest one
-- **Professional branding, uploadable** — headshot + logo uploads, name/firm/phone/email/review link (localStorage + URL params `?agent=…&firm=…&phone=…&review=…`); the firm opens the game, and the ending shows the agent's photo, logo and contact card with **Call / Email / Leave a Google review / Share with a friend**
-- `covered-standalone.html` — single-file build (~4.8MB, Babylon inlined) for hosting or sending as one attachment
-
-Vendored libraries: `games/insurance/covered/vendor/babylon.js` (Babylon.js 5.57), `vendor/tailwind.js` (Tailwind browser build).
+- **Story with a villain:** a superstorm hit town and **HAVOC the Storm Gremlin** is trashing it for fun. Race through the flooded neighborhood, rescue **5 keepsakes**, and defeat Havoc.
+- **The agent helps you win:** in the boss fight your insurance agent tosses **Policy Stars** that empower you to land the three winning hits — the professional literally helps you beat the antagonist.
+- **Robust platforming:** run/jump with coyote time, jump buffering, variable-height jumps, enemy stomps, moving platforms, flood pits with checkpoint respawn, hail, fire, coins, hearts.
+- **Refined, nuanced background:** layered parallax (sun/glow, hills, town skyline, drifting clouds, tree line), grass-and-dirt ground, animated flood water, storm weather that ramps across three acts, lightning, vignette.
+- **Agent prominent at open & close:** firm-branded title screen; finish card with the agent's photo, logo, name, firm and **Call / Email / Leave a Google review / Share with a friend**.
+- **Customizable hero** (name entry) + **uploadable agent branding** (headshot, logo, contact, review link; localStorage + URL params `?agent=…&firm=…&phone=…&review=…`).
+- **Controls:** WASD/arrows + Space on desktop; on-screen left/right + jump on touch.
+- **Theme-driven engine** (a `THEME` config block) so the same code re-skins for realtors, lawyers and dentists next — swap villain, palette, dialogue and items.
 
 ## Running the site
 
@@ -65,7 +64,7 @@ css/site.css                   Shared site styles
 js/site.js                     Scroll-reveal behavior
 professions/*.html             Four profession hubs (4 games each)
 games/realtor/keys/index.html  KEYS — flagship adventure (self-contained)
-games/insurance/covered/       COVERED: Storm Trail — 3D platformer (Babylon.js)
+games/insurance/covered/index.html  COVERED: Run for Cover — 2D arcade platformer (Canvas, no deps)
 assets/                        Gameplay screenshots used as promo art
 ```
 

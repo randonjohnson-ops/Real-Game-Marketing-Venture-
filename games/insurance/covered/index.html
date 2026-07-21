@@ -718,9 +718,9 @@ const Game={
     /* --- enemies --- */
     for(const e of LEVEL.enemies){ if(!e.alive){ e.squash=Math.max(0,e.squash-dt*3); continue; }
       e.x+=e.dir*74*dt; if(e.x<e.x0){e.x=e.x0;e.dir=1;} if(e.x>e.x1){e.x=e.x1;e.dir=-1;} e.ph+=dt*7;
-      // collision
-      if(Math.abs(e.x-h.x)<28 && h.y>e.y-40 && h.y-h.h<e.y){
-        if(h.vy>0 && h.prevBottom<=e.y-18){ e.alive=false; e.squash=1; h.vy=-560; h.jumpCut=true; SFX.stomp();
+      // collision — stomp if you came from above the enemy this frame, else take a hit
+      if(Math.abs(e.x-h.x)<30 && h.y>e.y-46 && h.y-h.h<e.y){
+        if(h.prevBottom<=e.y-8){ e.alive=false; e.squash=1; h.vy=-580; h.grounded=false; h.jumpCut=true; SFX.stomp();
           this.pop(e.x,e.y-16,'#8899bb',12); this.coins+=2; UI.coin(this.coins); }
         else this.hurtHero(h.x<e.x?-1:1);
       } }
