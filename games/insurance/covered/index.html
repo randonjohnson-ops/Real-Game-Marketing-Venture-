@@ -3,953 +3,1083 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>COVERED: Storm Trail — A 3D Platform Adventure</title>
+<title>COVERED: Run for Cover — An Insurance Arcade Adventure</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
-<meta name="description" content="COVERED: Storm Trail — a Crash-style 3D platform adventure. The storm flooded Maplewood and scattered ten keepsakes down the valley. Run, jump and bounce to recover them — your insurance agent is with you the whole way.">
-<script src="vendor/tailwind.js"></script>
-<script src="vendor/babylon.js"></script>
+<meta name="description" content="COVERED: Run for Cover — a side-scrolling arcade adventure. Race through your storm-struck town, rescue your neighbors' keepsakes, and defeat HAVOC the storm gremlin — with your insurance agent helping you win.">
 <style>
-  html,body{margin:0;height:100%;overflow:hidden;background:#0a0f1e;font-family:ui-rounded,'SF Pro Rounded','Segoe UI',system-ui,sans-serif;
-    -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;color:#fff}
-  #c3d{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;outline:none}
-  .hud{position:fixed;z-index:20}
-  .overlay{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;overflow-y:auto}
+  :root{
+    --gold:#ffc95c; --gold-hot:#ffb02e; --ink:#0a0f1e; --panel:rgba(10,15,32,.86);
+    --edge:rgba(255,255,255,.16); --text:#f4f7ff; --muted:#9fb0d4; --sky:#38bdf8; --rose:#fb7185; --violet:#8b5cf6;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overflow:hidden;background:#0a0f1e;color:var(--text);
+    font-family:ui-rounded,'SF Pro Rounded','Segoe UI',system-ui,sans-serif;-webkit-user-select:none;user-select:none}
+  #game{position:fixed;inset:0;width:100%;height:100%;display:block;image-rendering:auto;touch-action:none}
+  .hud{position:fixed;z-index:20;pointer-events:none}
+  .overlay{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;overflow-y:auto;padding:18px}
   .hidden2{display:none!important}
 
-  #compass{width:60px;height:60px;border-radius:50%;background:rgba(8,12,28,.78);border:1.5px solid rgba(255,255,255,.2);
-    backdrop-filter:blur(10px);display:grid;place-items:center;position:relative;box-shadow:0 6px 24px rgba(0,0,0,.4)}
-  #cneedle{position:absolute;inset:0;display:grid;place-items:center;transition:transform .12s linear}
-  #cneedle svg{filter:drop-shadow(0 0 6px rgba(255,201,92,.8))}
-  #cdist{position:absolute;bottom:-19px;left:50%;transform:translateX(-50%);font-size:10.5px;font-weight:800;color:#ffc95c;white-space:nowrap;text-shadow:0 1px 6px #000}
+  /* ---------- HUD ---------- */
+  #hudTop{top:calc(10px + env(safe-area-inset-top));left:12px;right:12px;display:flex;align-items:flex-start;gap:10px}
+  .chip{background:var(--panel);border:1px solid var(--edge);backdrop-filter:blur(10px);border-radius:14px;
+    box-shadow:0 6px 22px rgba(0,0,0,.4)}
+  #agentChip{display:flex;align-items:center;gap:9px;padding:7px 12px 7px 8px;pointer-events:auto}
+  #agentChip img{width:34px;height:34px;border-radius:10px;object-fit:cover;border:2px solid rgba(255,201,92,.6)}
+  #agentChip b{display:block;font-size:12.5px;line-height:1.1}
+  #agentChip span{font-size:10px;color:var(--muted);font-weight:700}
+  #hearts{display:flex;gap:3px;font-size:19px;padding:6px 10px;line-height:1}
+  #hearts .h{filter:drop-shadow(0 1px 2px rgba(0,0,0,.5));transition:transform .2s,opacity .2s}
+  #hearts .h.gone{opacity:.22;transform:scale(.8) rotate(-12deg);filter:grayscale(1)}
+  .stat{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:900;padding:7px 12px}
+  #hudRight{margin-left:auto;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+  #hudRow{display:flex;gap:8px;align-items:center}
+  #muteBtn{pointer-events:auto;width:38px;height:38px;border-radius:11px;font-size:15px;color:var(--text);
+    background:var(--panel);border:1px solid var(--edge);cursor:pointer}
 
-  #banner{position:fixed;top:20%;left:0;right:0;z-index:41;text-align:center;pointer-events:none;opacity:0}
-  #banner.on{animation:banpop 2.3s cubic-bezier(.2,1.1,.3,1) both}
-  @keyframes banpop{0%{opacity:0;transform:translateY(26px) scale(.88)}12%{opacity:1;transform:none}80%{opacity:1}100%{opacity:0;transform:translateY(-20px)}}
-  #bank{font-size:13px;font-weight:900;letter-spacing:4px;color:#ffc95c;text-transform:uppercase}
-  #bant{font-size:clamp(26px,5.5vw,44px);font-weight:900;background:linear-gradient(120deg,#fff,#ffc95c);
-    -webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 4px 18px rgba(255,176,46,.45))}
+  /* objective ribbon */
+  #obj{top:calc(58px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);max-width:92vw}
+  #objText{background:var(--panel);border:1px solid rgba(255,201,92,.3);backdrop-filter:blur(10px);border-radius:999px;
+    padding:8px 18px;font-size:13px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    box-shadow:0 6px 20px rgba(0,0,0,.35)}
 
-  #toastwrap{position:fixed;left:50%;bottom:calc(118px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:35;width:min(560px,92vw);pointer-events:none}
-  .agent-toast{display:flex;gap:12px;align-items:flex-start;background:rgba(8,12,28,.88);border:1.5px solid rgba(255,201,92,.4);
-    border-radius:18px;padding:12px 16px;backdrop-filter:blur(12px);box-shadow:0 14px 44px rgba(0,0,0,.5);
-    animation:toastin .35s cubic-bezier(.2,1.4,.4,1) both}
-  @keyframes toastin{from{opacity:0;transform:translateY(24px) scale(.92)}to{opacity:1;transform:none}}
-  .agent-toast.bye{animation:toastout .3s ease both}
-  @keyframes toastout{to{opacity:0;transform:translateY(14px)}}
-  .agent-toast img{width:44px;height:44px;border-radius:12px;object-fit:cover;flex:none;border:2px solid rgba(255,201,92,.5)}
+  /* progress rail (distance to Havoc) */
+  #rail{top:calc(96px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);width:min(300px,70vw)}
+  #railBar{height:8px;border-radius:999px;background:rgba(10,15,32,.7);border:1px solid var(--edge);position:relative;overflow:visible}
+  #railFill{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:linear-gradient(90deg,#38bdf8,#ffc95c);width:0%}
+  #railHero{position:absolute;top:-7px;font-size:15px;transform:translateX(-50%)}
+  #railBoss{position:absolute;right:-6px;top:-10px;font-size:16px}
 
-  #fade{position:fixed;inset:0;z-index:50;background:#0a0f1e;opacity:0;pointer-events:none;transition:opacity .28s}
+  /* boss HP */
+  #bossHP{top:calc(10px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);width:min(340px,80vw);display:none}
+  #bossHP.on{display:block}
+  #bossHP .lbl{font-size:12px;font-weight:900;letter-spacing:2px;text-transform:uppercase;color:var(--rose);text-align:center;
+    text-shadow:0 2px 8px #000;margin-bottom:3px}
+  #bossHPbar{height:14px;border-radius:999px;background:rgba(10,15,32,.8);border:1.5px solid rgba(251,113,133,.5);overflow:hidden}
+  #bossHPfill{height:100%;width:100%;background:linear-gradient(90deg,#fb7185,#f59e0b);transition:width .35s cubic-bezier(.2,1,.3,1)}
+
+  /* banners / toasts */
+  #banner{top:22%;left:0;right:0;text-align:center;position:fixed;z-index:41;pointer-events:none;opacity:0}
+  #banner.on{animation:banpop 2.2s cubic-bezier(.2,1.1,.3,1) both}
+  @keyframes banpop{0%{opacity:0;transform:translateY(24px) scale(.86)}12%{opacity:1;transform:none}82%{opacity:1}100%{opacity:0;transform:translateY(-18px)}}
+  #bankK{font-size:12.5px;font-weight:900;letter-spacing:4px;text-transform:uppercase;color:var(--gold)}
+  #bankT{font-size:clamp(26px,6vw,46px);font-weight:900;background:linear-gradient(120deg,#fff,var(--gold));
+    -webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 4px 16px rgba(255,176,46,.45))}
+
+  #toastWrap{position:fixed;left:50%;bottom:calc(120px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:35;
+    width:min(560px,92vw);pointer-events:none}
+  .radio{display:flex;gap:11px;align-items:flex-start;background:rgba(10,15,32,.9);border:1.5px solid rgba(255,201,92,.4);
+    border-radius:16px;padding:11px 15px;backdrop-filter:blur(12px);box-shadow:0 12px 40px rgba(0,0,0,.5);
+    animation:tin .34s cubic-bezier(.2,1.4,.4,1) both}
+  @keyframes tin{from{opacity:0;transform:translateY(20px) scale(.93)}to{opacity:1;transform:none}}
+  .radio.bye{animation:tout .28s ease both}
+  @keyframes tout{to{opacity:0;transform:translateY(12px)}}
+  .radio img{width:42px;height:42px;border-radius:11px;object-fit:cover;flex:none;border:2px solid rgba(255,201,92,.5)}
+  .radio .rk{font-size:10px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold)}
+  .radio .rt{font-size:13.5px;font-weight:700;line-height:1.45;margin-top:2px}
+
+  #flash{position:fixed;inset:0;z-index:44;background:#fff;opacity:0;pointer-events:none}
+  #fade{position:fixed;inset:0;z-index:45;background:#0a0f1e;opacity:0;pointer-events:none;transition:opacity .25s}
   #fade.on{opacity:1}
 
-  /* touch controls */
-  #joy{position:fixed;left:20px;bottom:calc(24px + env(safe-area-inset-bottom));z-index:30;width:128px;height:128px;border-radius:50%;
-    background:rgba(255,255,255,.09);border:1.5px solid rgba(255,255,255,.25);display:none;touch-action:none}
-  #joyknob{position:absolute;left:50%;top:50%;width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.28);
-    border:1.5px solid rgba(255,255,255,.45);transform:translate(-50%,-50%)}
-  #btnJump{position:fixed;right:24px;bottom:calc(30px + env(safe-area-inset-bottom));z-index:30;width:96px;height:96px;border-radius:50%;
-    border:none;font-weight:900;font-size:15px;color:#2b1600;touch-action:none;display:none;
-    background:linear-gradient(135deg,#ffe08a,#ffb02e);box-shadow:0 10px 34px rgba(255,176,46,.5);place-items:center}
-  #btnJump:active{transform:scale(.94)}
-  body.touch #joy{display:block}
-  body.touch #btnJump{display:grid}
-  body.touch #kbdhint{display:none}
+  /* ---------- touch controls ---------- */
+  #pad{position:fixed;left:16px;bottom:calc(20px + env(safe-area-inset-bottom));z-index:30;display:none;gap:12px}
+  .tbtn{width:74px;height:74px;border-radius:20px;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.25);
+    display:grid;place-items:center;font-size:26px;color:#fff;touch-action:none;backdrop-filter:blur(6px)}
+  .tbtn:active,.tbtn.on{background:rgba(255,201,92,.3);border-color:var(--gold)}
+  #jumpBtn{position:fixed;right:20px;bottom:calc(24px + env(safe-area-inset-bottom));z-index:30;width:104px;height:104px;
+    border-radius:50%;border:none;display:none;place-items:center;font-weight:900;font-size:15px;color:#2b1600;touch-action:none;
+    background:radial-gradient(circle at 40% 35%,#ffe9a8,#ffb02e);box-shadow:0 10px 30px rgba(255,176,46,.5),inset 0 3px 0 rgba(255,255,255,.6)}
+  #jumpBtn:active{transform:scale(.93)}
+  body.touch #pad{display:flex}
+  body.touch #jumpBtn{display:grid}
+  body.touch #kbd{display:none}
+  #kbd{bottom:calc(12px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%)}
+  #kbd .k{background:var(--panel);border:1px solid var(--edge);border-radius:999px;padding:6px 15px;font-size:11.5px;
+    font-weight:700;color:var(--muted)}
+  #kbd b{color:#fff}
 
-  .goldbtn{background:linear-gradient(135deg,#ffe08a,#ffb02e);color:#2b1600;font-weight:900;border:none;cursor:pointer;
-    box-shadow:0 10px 36px rgba(255,176,46,.45),inset 0 2px 0 rgba(255,255,255,.6);transition:transform .16s}
-  .goldbtn:hover{transform:scale(1.045)}
-  .ghostbtn{background:rgba(255,255,255,.08);color:#fff;border:1.5px solid rgba(255,255,255,.22);font-weight:900;cursor:pointer;transition:transform .16s}
-  .ghostbtn:hover{transform:translateY(-2px)}
-  input[type=text],input[type=url],input[type=tel],input[type=email]{background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.18);
-    border-radius:12px;color:#fff;font-weight:700;outline:none;padding:10px 14px;font-size:14px;width:100%}
-  input:focus{border-color:#ffc95c}
+  /* ---------- buttons & inputs ---------- */
+  .gold{background:linear-gradient(135deg,#ffe08a,var(--gold-hot));color:#2b1600;font-weight:900;border:none;cursor:pointer;
+    box-shadow:0 10px 34px rgba(255,176,46,.45),inset 0 2px 0 rgba(255,255,255,.6);transition:transform .16s}
+  .gold:hover{transform:scale(1.04)}
+  .ghost{background:rgba(255,255,255,.08);color:#fff;border:1.5px solid var(--edge);font-weight:900;cursor:pointer;transition:transform .16s}
+  .ghost:hover{transform:translateY(-2px)}
+  input{background:rgba(255,255,255,.08);border:1.5px solid var(--edge);border-radius:12px;color:#fff;font-weight:700;
+    outline:none;padding:10px 14px;font-size:14px;width:100%}
+  input:focus{border-color:var(--gold)}
   @keyframes shine{to{background-position:200% center}}
+
+  /* ---------- title ---------- */
+  #title{background:radial-gradient(130% 100% at 50% 0%,#20336e 0%,#0e1636 52%,#070b1a 100%)}
+  #titleCard{width:100%;max-width:560px;display:flex;flex-direction:column;align-items:center}
+  #firmRow{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.07);border:1px solid var(--edge);
+    border-radius:16px;padding:10px 18px;margin-bottom:20px}
+  #firmRow img{width:52px;height:52px;border-radius:13px;object-fit:cover}
+  #firmRow .fn{font-size:20px;font-weight:900;letter-spacing:.3px}
+  #firmRow .fp{font-size:11px;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:#8ea3d6}
+  #logoBig{font-size:52px;filter:drop-shadow(0 8px 26px rgba(56,189,248,.5))}
+  #titleH{font-size:clamp(46px,11vw,88px);font-weight:900;letter-spacing:2px;line-height:.95;margin-top:2px;
+    background:linear-gradient(120deg,#fff 12%,var(--sky) 42%,#fff 62%,var(--gold) 92%);background-size:200% auto;
+    -webkit-background-clip:text;background-clip:text;color:transparent;animation:shine 4.5s linear infinite}
+  #titleSub{font-size:clamp(12px,2.6vw,15px);font-weight:900;letter-spacing:3px;text-transform:uppercase;color:#8ea3d6;margin-top:4px}
+  #titleStory{max-width:460px;font-size:13.5px;font-weight:600;line-height:1.6;color:#b9c6e6;margin-top:16px}
+  #titleStory b{color:#fff}
+  #villRow{display:flex;align-items:center;gap:10px;margin-top:14px;background:rgba(251,113,133,.1);border:1px solid rgba(251,113,133,.35);
+    border-radius:14px;padding:8px 16px 8px 10px}
+  #villRow .ve{font-size:30px}
+  #villRow .vt{text-align:left}
+  #villRow .vt b{font-size:14px;color:#fda4b0}
+  #villRow .vt span{display:block;font-size:11px;color:var(--muted);font-weight:700}
+  #nameWrap{width:260px;margin-top:18px}
+  #startBtn{border-radius:999px;font-size:18px;padding:15px 46px;margin-top:16px}
+  #brandBtn{border-radius:999px;font-size:12px;padding:8px 18px;margin-top:14px}
+  #tHint{font-size:11.5px;font-weight:700;color:#7c8bb0;margin-top:12px}
+
+  /* ---------- branding panel ---------- */
+  #brandPanel .card{width:100%;max-width:460px;background:linear-gradient(165deg,#18224a,#0c1128);border:1.5px solid var(--edge);
+    border-radius:24px;padding:22px;text-align:left}
+  #brandPanel h2{font-size:23px;font-weight:900;margin:2px 0 14px}
+  #brandPanel .k{font-size:11px;font-weight:900;letter-spacing:3px;text-transform:uppercase;color:var(--gold)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .flabel{font-size:10px;font-weight:900;letter-spacing:1.2px;text-transform:uppercase;color:#8ea3d6}
+  .upload{display:flex;align-items:center;gap:8px;margin-top:5px}
+  .upload img{width:46px;height:46px;border-radius:12px;object-fit:cover;border:2px solid rgba(255,201,92,.5)}
+  .ubtn{border-radius:11px;font-size:11px;padding:8px 12px;cursor:pointer}
+
+  /* ---------- end ---------- */
+  #end{background:rgba(6,10,22,.82);backdrop-filter:blur(6px)}
+  #endCard{width:100%;max-width:520px;background:linear-gradient(165deg,#18224a,#0c1128);border:1.5px solid rgba(255,255,255,.2);
+    border-radius:26px;padding:26px;box-shadow:0 30px 90px rgba(0,0,0,.7)}
+  #endK{font-size:11.5px;font-weight:900;letter-spacing:3px;text-transform:uppercase;color:var(--gold)}
+  #endTitle{font-size:28px;font-weight:900;margin-top:3px}
+  #endSub{font-size:13px;font-weight:700;color:var(--muted);margin-top:2px}
+  #endStats{display:flex;justify-content:center;gap:10px;margin-top:16px}
+  .estat{background:rgba(255,255,255,.06);border:1px solid var(--edge);border-radius:16px;padding:11px 16px}
+  .estat .v{font-size:22px;font-weight:900}
+  .estat .l{font-size:9.5px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:var(--muted)}
+  #agentCard{background:linear-gradient(135deg,rgba(255,201,92,.15),rgba(56,189,248,.1));border:1.5px dashed rgba(255,201,92,.55);
+    border-radius:18px;padding:16px;margin-top:16px;text-align:left}
+  #agentCard .top{display:flex;align-items:center;gap:14px}
+  #agentCard img#endImg{width:64px;height:64px;border-radius:16px;object-fit:cover;border:2.5px solid var(--gold)}
+  #agentCard .an{font-size:18px;font-weight:900}
+  #agentCard .af{display:flex;align-items:center;gap:7px;margin-top:2px}
+  #agentCard .af img{width:20px;height:20px;border-radius:5px;object-fit:cover}
+  #agentCard .af span{font-size:12.5px;font-weight:800;color:#c3cdea}
+  #agentCard .amsg{font-size:11.5px;font-weight:700;color:var(--muted);margin-top:6px;line-height:1.45}
+  #contactRow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+  #contactRow a{border-radius:12px;padding:11px;text-align:center;font-size:13px;font-weight:900}
+  #ctaRow{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:14px}
+  #ctaRow button,#ctaRow a{border-radius:13px;padding:13px 8px;font-size:13.5px;font-weight:900;text-align:center}
+  #reviewBtn{background:linear-gradient(135deg,var(--violet),var(--rose));color:#fff;border:none;
+    box-shadow:0 8px 26px rgba(139,92,246,.4);text-decoration:none}
+  #endFoot{font-size:10.5px;font-weight:600;color:#7c8bb0;margin-top:12px;line-height:1.5}
+  #endFoot b{color:#fff}
+  #againBtn{width:100%;border-radius:13px;padding:12px;font-size:13px;margin-top:9px}
 </style>
 </head>
 <body>
-<canvas id="c3d"></canvas>
+<canvas id="game"></canvas>
+
+<!-- ================= HUD ================= -->
+<div id="hudTop" class="hud hidden2">
+  <div id="agentChip" class="chip">
+    <img id="hudImg" alt="agent"><div><b id="hudName">Dana Reyes</b><span id="hudFirm">Safe Harbor Insurance</span></div>
+  </div>
+  <div id="hearts" class="chip"></div>
+  <div id="hudRight">
+    <div id="hudRow">
+      <div class="stat chip">💎 <span id="hudKeep">0</span>/5</div>
+      <div class="stat chip">🪙 <span id="hudCoin">0</span></div>
+      <button id="muteBtn">🔊</button>
+    </div>
+  </div>
+</div>
+<div id="obj" class="hud hidden2"><div id="objText">🌪️ Reach the neighborhood — HAVOC is on the loose!</div></div>
+<div id="rail" class="hud hidden2"><div id="railBar"><div id="railFill"></div><div id="railHero">🏃</div><div id="railBoss">🌩️</div></div></div>
+<div id="bossHP" class="hud"><div class="lbl" id="bossName">HAVOC · The Storm Gremlin</div><div id="bossHPbar"><div id="bossHPfill"></div></div></div>
+
+<div id="banner"><div id="bankK"></div><div id="bankT"></div></div>
+<div id="toastWrap"></div>
+<div id="flash"></div>
 <div id="fade"></div>
 
-<!-- ==================== HUD ==================== -->
-<div id="hudTop" class="hud hidden2" style="top:calc(12px + env(safe-area-inset-top));left:12px;right:12px;display:flex;align-items:flex-start;gap:10px">
-  <div class="flex items-center gap-2.5 rounded-2xl px-3 py-2" style="background:rgba(8,12,28,.78);border:1px solid rgba(255,255,255,.16);backdrop-filter:blur(10px)">
-    <img id="hudAgentImg" class="w-9 h-9 rounded-xl object-cover" style="border:2px solid rgba(255,201,92,.55)" alt="agent">
-    <div class="text-left leading-tight">
-      <div id="hudAgentName" class="text-[13px] font-extrabold">Dana Reyes</div>
-      <div id="hudFirm" class="text-[10px] font-bold" style="color:#a9b4d6">Safe Harbor Insurance</div>
-    </div>
-  </div>
-  <div class="flex-1"></div>
-  <div class="flex items-start gap-2">
-    <div class="flex flex-col gap-1.5 items-end">
-      <div class="rounded-2xl px-4 py-2 text-[15px] font-black" style="background:rgba(8,12,28,.78);border:1px solid rgba(255,255,255,.16);backdrop-filter:blur(10px)">
-        ✨ <span id="hudKeep">0</span>/10</div>
-      <div class="rounded-2xl px-4 py-1.5 text-[13px] font-black" style="background:rgba(8,12,28,.7);border:1px solid rgba(255,255,255,.12)">
-        🪙 <span id="hudCoin">0</span></div>
-    </div>
-    <div id="compass"><div id="cneedle"><svg width="32" height="32" viewBox="0 0 34 34"><path d="M17 3 L23 21 L17 17.5 L11 21 Z" fill="#ffc95c"/></svg></div>
-      <div id="cdist">0m</div></div>
-    <button id="muteBtn" class="rounded-xl w-10 h-10 text-base" style="background:rgba(8,12,28,.78);border:1px solid rgba(255,255,255,.16)">🔊</button>
+<div id="pad"><div class="tbtn" id="leftBtn">◀</div><div class="tbtn" id="rightBtn">▶</div></div>
+<button id="jumpBtn">JUMP</button>
+<div id="kbd" class="hud hidden2"><span class="k"><b>←→ / A D</b> run &nbsp;·&nbsp; <b>Space / ↑ / W</b> jump &nbsp;·&nbsp; stomp gremlins from above</span></div>
+
+<!-- ================= TITLE ================= -->
+<div id="title" class="overlay">
+  <div id="titleCard">
+    <div id="firmRow"><img id="titleLogo" alt="logo"><div><div class="fn" id="titleFirm">Safe Harbor Insurance</div><div class="fp">proudly presents</div></div></div>
+    <div id="logoBig">🛡️</div>
+    <div id="titleH">COVERED</div>
+    <div id="titleSub">Run for Cover · An Arcade Adventure</div>
+    <div id="titleStory">A freak superstorm just tore through your town — and <b id="villInline">HAVOC</b>, the storm gremlin, is trashing the place for fun. Race through the neighborhood, rescue <b>5 keepsakes</b>, dodge the chaos, and take him down. Your agent <b id="introAgent">Dana Reyes</b> is right beside you the whole way. 🛡️</div>
+    <div id="villRow"><span class="ve">🌩️</span><div class="vt"><b id="villName">HAVOC</b><span id="villTag">the Storm Gremlin · your rival</span></div></div>
+    <div id="nameWrap"><input id="clientName" maxlength="14" placeholder="Your first name (the hero)"></div>
+    <button id="startBtn" class="gold">▶ &nbsp;Start the Adventure</button>
+    <div id="tHint">🎧 sound on · ← → to run, jump to leap &amp; stomp · finish to unlock your reward</div>
+    <button id="brandBtn" class="ghost">⚙️ Professional? Customize your branding</button>
   </div>
 </div>
 
-<div id="hudObj" class="hud hidden2" style="top:calc(70px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);max-width:92vw">
-  <div id="objText" class="rounded-full px-5 py-2 text-[13px] font-extrabold whitespace-nowrap overflow-hidden text-ellipsis"
-    style="background:rgba(8,12,28,.78);border:1px solid rgba(255,201,92,.3);backdrop-filter:blur(10px)">🌊 Follow the trail to Dana's first camp!</div>
-</div>
-
-<div id="kbdhint" class="hud hidden2" style="bottom:calc(14px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%)">
-  <div class="rounded-full px-4 py-1.5 text-[11.5px] font-bold" style="background:rgba(8,12,28,.7);border:1px solid rgba(255,255,255,.14);color:#a9b4d6">
-    <b class="text-white">WASD / ←↑↓→</b> run &nbsp;·&nbsp; <b class="text-white">SPACE</b> jump <span id="djHint" class="hidden2">(press twice to <b class="text-white">double-jump</b>!)</span></div>
-</div>
-
-<div id="banner"><div id="bank">Recovered</div><div id="bant"></div></div>
-<div id="toastwrap"></div>
-
-<div id="joy"><div id="joyknob"></div></div>
-<button id="btnJump">JUMP</button>
-
-<!-- ==================== TITLE ==================== -->
-<div id="title" class="overlay" style="background:radial-gradient(130% 100% at 50% 0%,#1b2a5e 0%,#0d1430 55%,#070b1a 100%)">
-  <div class="px-5 py-8 w-full flex flex-col items-center">
-    <div class="flex items-center gap-3 rounded-2xl px-5 py-3 mb-6" style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.18)">
-      <img id="titleLogo" class="w-12 h-12 rounded-xl object-cover" alt="firm logo">
-      <div class="text-left">
-        <div id="titleFirm" class="text-[19px] font-black tracking-wide">Safe Harbor Insurance</div>
-        <div class="text-[11px] font-bold tracking-[3px] uppercase" style="color:#8fa0cc">proudly presents</div>
-      </div>
+<!-- ================= BRANDING ================= -->
+<div id="brandPanel" class="overlay hidden2" style="background:rgba(5,8,18,.9);backdrop-filter:blur(8px)">
+  <div class="card">
+    <div class="k">Agent branding</div><h2>Make this game yours</h2>
+    <div class="grid2">
+      <div><div class="flabel">Your name</div><input id="bName"></div>
+      <div><div class="flabel">Firm name</div><input id="bFirm"></div>
+      <div><div class="flabel">Phone</div><input id="bPhone" type="tel"></div>
+      <div><div class="flabel">Email</div><input id="bEmail" type="email"></div>
+      <div style="grid-column:1/-1"><div class="flabel">Google review link</div><input id="bReview" type="url" placeholder="https://g.page/r/..."></div>
+      <div><div class="flabel">Headshot</div><div class="upload"><img id="bPhotoPrev"><label class="ghost ubtn">Upload<input id="bPhoto" type="file" accept="image/*" class="hidden2"></label></div></div>
+      <div><div class="flabel">Firm logo</div><div class="upload"><img id="bLogoPrev"><label class="ghost ubtn">Upload<input id="bLogo" type="file" accept="image/*" class="hidden2"></label></div></div>
     </div>
-    <div class="text-6xl mb-1" style="filter:drop-shadow(0 8px 30px rgba(56,189,248,.5))">🛡️</div>
-    <h1 class="font-black leading-none" style="font-size:clamp(44px,10vw,84px);letter-spacing:3px;background:linear-gradient(120deg,#fff 15%,#38bdf8 45%,#fff 65%,#ffc95c 90%);background-size:200% auto;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shine 4.5s linear infinite">COVERED</h1>
-    <div class="text-[13px] md:text-[16px] font-extrabold tracking-[4px] uppercase mt-1" style="color:#8fa0cc">Storm Trail · A 3D Platform Adventure</div>
-    <p class="max-w-xl mt-5 text-[14px] font-semibold leading-relaxed" style="color:#b9c4e2">
-      The Great Storm flooded Maplewood Valley and washed your neighbors' most precious things down the trail.
-      Run, jump and bounce through <b class="text-white">three worlds</b> to recover all <b class="text-white">10 keepsakes</b> —
-      your agent <b id="introAgent" class="text-white">Dana Reyes</b> has camps along the way, and every find becomes a real recovery. ⛺</p>
-    <div class="flex items-center gap-3 mt-5 rounded-full pl-2 pr-5 py-2" style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16)">
-      <img id="titleAgentImg" class="w-10 h-10 rounded-full object-cover" style="border:2px solid #ffc95c" alt="agent">
-      <div class="text-left leading-tight"><div id="titleAgentName" class="text-[14px] font-black">Dana Reyes</div>
-        <div class="text-[11px] font-bold" style="color:#8fa0cc">your guide, in-game &amp; in real life</div></div>
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button id="bSave" class="gold" style="flex:1;border-radius:12px;padding:12px">💾 Save branding</button>
+      <button id="bClose" class="ghost" style="border-radius:12px;padding:12px 20px">Close</button>
     </div>
-    <div class="mt-5 w-64"><input type="text" id="clientName" maxlength="14" placeholder="Your first name (the hero)"></div>
-    <button id="startBtn" class="goldbtn rounded-full text-lg px-12 py-4 mt-5">▶ &nbsp;Start the Adventure</button>
-    <div class="mt-4 text-[11.5px] font-bold" style="color:#7c88ad">🎧 sound on · one stick + one button · fall in the water? You just splash back to camp</div>
-    <button id="brandBtn" class="ghostbtn rounded-full text-[12px] px-5 py-2 mt-4">⚙️ Professional? Customize your branding</button>
+    <div style="font-size:10.5px;color:#7c8bb0;margin-top:11px;line-height:1.5">Saved on this device and shown at the open, in-game, and on the finish card. Share links can prefill via URL: <b>?agent=…&amp;firm=…&amp;phone=…&amp;review=…</b></div>
   </div>
 </div>
 
-<!-- ==================== BRANDING PANEL ==================== -->
-<div id="brandPanel" class="overlay hidden2" style="background:rgba(5,8,18,.88);backdrop-filter:blur(8px)">
-  <div class="w-[min(460px,94vw)] rounded-3xl p-6 text-left my-6" style="background:linear-gradient(165deg,#1a2246,#0d1226);border:1.5px solid rgba(255,255,255,.18)">
-    <div class="text-[11px] font-black tracking-[3px] uppercase" style="color:#ffc95c">Agent branding</div>
-    <h2 class="text-2xl font-black mt-1 mb-4">Make this game yours</h2>
-    <div class="grid grid-cols-2 gap-3">
-      <div><label class="text-[10.5px] font-black tracking-wider uppercase" style="color:#8fa0cc">Your name</label><input type="text" id="bName"></div>
-      <div><label class="text-[10.5px] font-black tracking-wider uppercase" style="color:#8fa0cc">Firm name</label><input type="text" id="bFirm"></div>
-      <div><label class="text-[10.5px] font-black tracking-wider uppercase" style="color:#8fa0cc">Phone</label><input type="tel" id="bPhone"></div>
-      <div><label class="text-[10.5px] font-black tracking-wider uppercase" style="color:#8fa0cc">Email</label><input type="email" id="bEmail"></div>
-      <div class="col-span-2"><label class="text-[10.5px] font-black tracking-wider uppercase" style="color:#8fa0cc">Google review link</label><input type="url" id="bReview" placeholder="https://g.page/r/..."></div>
-      <div><label class="text-[10.5px] font-black tracking-wider uppercase" style="color:#8fa0cc">Headshot (photo)</label>
-        <div class="flex items-center gap-2 mt-1"><img id="bPhotoPrev" class="w-12 h-12 rounded-xl object-cover" style="border:2px solid rgba(255,201,92,.5)">
-        <label class="ghostbtn rounded-xl text-[11px] px-3 py-2 cursor-pointer">Upload<input type="file" id="bPhoto" accept="image/*" class="hidden2"></label></div></div>
-      <div><label class="text-[10.5px] font-black tracking-wider uppercase" style="color:#8fa0cc">Firm logo</label>
-        <div class="flex items-center gap-2 mt-1"><img id="bLogoPrev" class="w-12 h-12 rounded-xl object-cover" style="border:2px solid rgba(255,255,255,.3)">
-        <label class="ghostbtn rounded-xl text-[11px] px-3 py-2 cursor-pointer">Upload<input type="file" id="bLogo" accept="image/*" class="hidden2"></label></div></div>
+<!-- ================= END ================= -->
+<div id="end" class="overlay hidden2">
+  <div id="endCard">
+    <div id="endK">Town saved</div>
+    <div id="endTitle">You beat HAVOC!</div>
+    <div id="endSub">Every keepsake rescued. The sun's back out.</div>
+    <div id="endStats">
+      <div class="estat"><div class="v" id="endKeep">—</div><div class="l">Keepsakes</div></div>
+      <div class="estat"><div class="v" style="color:var(--gold)" id="endCoin">—</div><div class="l">Coins</div></div>
+      <div class="estat"><div class="v" style="color:var(--sky)" id="endTime">—</div><div class="l">Time</div></div>
     </div>
-    <div class="flex gap-2.5 mt-5">
-      <button id="bSave" class="goldbtn rounded-xl flex-1 py-3 text-[14px]">💾 Save branding</button>
-      <button id="bClose" class="ghostbtn rounded-xl px-5 py-3 text-[14px]">Close</button>
-    </div>
-    <div class="mt-3 text-[10.5px] font-semibold leading-relaxed" style="color:#7c88ad">Saved on this device and applied everywhere your name, face and logo appear. Shareable links can pre-fill via URL: <b>?agent=…&amp;firm=…&amp;phone=…&amp;review=…</b></div>
-  </div>
-</div>
-
-<!-- ==================== END ==================== -->
-<div id="end" class="overlay hidden2" style="background:rgba(5,8,18,.78);backdrop-filter:blur(6px)">
-  <div class="w-[min(520px,94vw)] rounded-3xl p-7 my-6 text-center" style="background:linear-gradient(165deg,#1a2246,#0d1226);border:1.5px solid rgba(255,255,255,.2);box-shadow:0 30px 90px rgba(0,0,0,.7)">
-    <div class="text-[11.5px] font-black tracking-[3px] uppercase" style="color:#ffc95c">Trail complete</div>
-    <h2 id="endTitle" class="text-3xl font-black mt-1">You made it through the storm.</h2>
-    <p id="endSub" class="text-[13px] font-bold mt-1" style="color:#8fa0cc">Maplewood Valley, recovered — one keepsake at a time.</p>
-    <div class="flex justify-center gap-3 mt-5">
-      <div class="rounded-2xl px-5 py-3" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14)">
-        <div class="text-2xl font-black" id="endKeep">—</div><div class="text-[10px] font-black tracking-wider uppercase" style="color:#8fa0cc">Keepsakes</div></div>
-      <div class="rounded-2xl px-5 py-3" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14)">
-        <div class="text-2xl font-black" style="color:#ffc95c" id="endCoin">—</div><div class="text-[10px] font-black tracking-wider uppercase" style="color:#8fa0cc">Coins</div></div>
-      <div class="rounded-2xl px-5 py-3" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14)">
-        <div class="text-2xl font-black" style="color:#38bdf8" id="endTime">—</div><div class="text-[10px] font-black tracking-wider uppercase" style="color:#8fa0cc">Time</div></div>
-    </div>
-    <div class="rounded-2xl p-5 mt-5 text-left" style="background:linear-gradient(135deg,rgba(255,201,92,.14),rgba(56,189,248,.1));border:1.5px dashed rgba(255,201,92,.55)">
-      <div class="flex items-center gap-4">
-        <img id="endAgentImg" class="w-16 h-16 rounded-2xl object-cover" style="border:2.5px solid #ffc95c" alt="agent">
-        <div class="flex-1 leading-tight">
-          <div id="endAgentName" class="text-[18px] font-black">Dana Reyes</div>
-          <div class="flex items-center gap-2 mt-0.5"><img id="endLogo" class="w-5 h-5 rounded object-cover" alt="logo">
-            <span id="endFirm" class="text-[12.5px] font-extrabold" style="color:#b9c4e2">Safe Harbor Insurance</span></div>
-          <div class="text-[11px] font-bold mt-1" style="color:#8fa0cc">I had a camp at every turn of your trail. In real life? Same job — before <i>and</i> after the storm.</div>
+    <div id="agentCard">
+      <div class="top">
+        <img id="endImg" alt="agent">
+        <div style="flex:1">
+          <div class="an" id="endName">Dana Reyes</div>
+          <div class="af"><img id="endLogo" alt="logo"><span id="endFirm">Safe Harbor Insurance</span></div>
+          <div class="amsg">In the game I had your back. In real life, that's the whole job — <b>before</b> the storm, not just after.</div>
         </div>
       </div>
-      <div class="grid grid-cols-2 gap-2 mt-4">
-        <a id="endCall" href="#" class="ghostbtn rounded-xl py-2.5 text-center text-[13px]">📞 <span id="endPhone">Call</span></a>
-        <a id="endEmail" href="#" class="ghostbtn rounded-xl py-2.5 text-center text-[13px]">✉️ Email me</a>
+      <div id="contactRow">
+        <a id="endCall" class="ghost" href="#">📞 <span id="endPhone">Call</span></a>
+        <a id="endEmail" class="ghost" href="#">✉️ Email me</a>
       </div>
     </div>
-    <div class="grid grid-cols-2 gap-2.5 mt-4">
-      <button id="shareBtn" class="goldbtn rounded-xl py-3.5 text-[14px]">💌 Share with a friend</button>
-      <a id="reviewBtn" href="#" target="_blank" rel="noopener" class="rounded-xl py-3.5 text-[14px] font-black text-center" style="background:linear-gradient(135deg,#8b5cf6,#fb7185);color:#fff;box-shadow:0 8px 26px rgba(139,92,246,.4)">⭐ Leave a Google review</a>
+    <div id="ctaRow">
+      <button id="shareBtn" class="gold">💌 Share with a friend</button>
+      <a id="reviewBtn" href="#" target="_blank" rel="noopener">⭐ Leave a Google review</a>
     </div>
-    <div class="flex gap-2.5 mt-2.5">
-      <button id="againBtn" class="ghostbtn rounded-xl flex-1 py-3 text-[13px]">↻ Run the trail again</button>
-    </div>
-    <div class="mt-3 text-[10.5px] font-semibold" style="color:#7c88ad">Know someone the storm hit harder? Share this — <b id="endRefAgent" class="text-white">Dana</b> takes care of friends. 🛡️ · Powered by ClientQuest</div>
+    <button id="againBtn" class="ghost">↻ Play again</button>
+    <div id="endFoot">Know someone the storm hit hard? Share this — <b id="endRef">Dana</b> takes care of friends. 🛡️ · Powered by ClientQuest</div>
   </div>
 </div>
 
 <script>
 'use strict';
 /* =====================================================================
-   COVERED: Storm Trail — Crash-style 3D platform adventure
-   Babylon.js 5 (vendored) + Tailwind (vendored) · PC + mobile
-   Modules: Branding · SFX · Input · UI · Art · Level · Hero · Game
-===================================================================== */
+   COVERED: Run for Cover — a side-scrolling arcade adventure
+   ClientQuest insurance flagship · pure Canvas 2D, zero dependencies
+   ---------------------------------------------------------------------
+   THEME is data-driven: swap the THEME block to re-skin the same engine
+   for realtors / lawyers / dentists (villain, palette, dialogue, items).
+   ===================================================================== */
 const E = id => document.getElementById(id);
-const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
-const lerp = (a,b,t) => a + (b-a)*t;
-const V3 = (x,y,z) => new BABYLON.Vector3(x,y,z);
-const C3 = hex => BABYLON.Color3.FromHexString(hex);
+const clamp = (v,a,b)=> v<a?a : v>b?b : v;
+const lerp = (a,b,t)=> a+(b-a)*t;
+const rand = (a,b)=> a+Math.random()*(b-a);
+const now = ()=> performance.now();
+
+/* ==================== THEME (per-profession config) ==================== */
+const THEME = {
+  key:'insurance',
+  hero:{ shirt:'#3162e0', shirtDk:'#254bb0', pants:'#2c3550', skin:'#f0c49a', hair:'#43301f' },
+  villain:{ name:'HAVOC', tag:'the Storm Gremlin', emoji:'🌩️' },
+  keepTotal:5,
+  keepNoun:'keepsake',
+  // sky gradients per act (top,mid,bottom) — calm → overcast → storm
+  skies:[
+    ['#7ec8f5','#bfe4fb','#eaf6ff'],
+    ['#8fa9c8','#b9c9dd','#dfe8f0'],
+    ['#3a4a6b','#5a6684','#8a90a8'],
+  ],
+  // agent radio lines
+  intro:(n)=>`${n}! It's ${AG.name.split(' ')[0]} on the line. HAVOC flooded half the block and he's LOVING it. Grab everything the neighbors lost, jump on his little gremlins, and I'll cover you the whole way. Let's go be the good news! 🛡️`,
+  camp1:`Take this — a <b>Policy Shield</b>. One free hit, on the house. Checkpoint saved right here. Now go, ${'{n}'} — the storm's getting worse!`,
+  camp2:(n)=>`Big flood ahead — hang on… *inflates emergency raft-bridge* …there! Cross safe. Fresh shield for you too. HAVOC's just past the trees, ${n}. Time to end this.`,
+  keepLines:[
+    "The Nguyens' photo album — safe! Their contents claim files tonight. 📸",
+    "Mr. Okafor's guitar! Survived the '09 flood too. Instrument rider: on. 🎸",
+    "Mia's science-fair trophy — one very relieved kid. 🏆",
+    "Rosa's food-truck sign! Business-interruption coverage kicks in — she reopens Friday. 🌮",
+    "The Khans' house deed — original, bone dry. I'll walk them through the whole rebuild. 📜",
+  ],
+  bossIntro:(n)=>`There he is. Okay ${n}, listen — you can't touch him alone, he'll zap you. When I toss you a <b>Policy Star</b>, grab it and JUMP into him. Three good hits and he's done. I've got the stars — you've got this!`,
+  bossHit:['One down! Grab the next star!',"TWO! He's rattled — one more!",'...'],
+  bossWin:(n)=>`THAT'S IT! You did it, ${n}! Look — sun's already breaking through. That's what "covered" feels like. 🌤️`,
+};
 
 /* ==================== BRANDING ==================== */
+const AG = { name:'Dana Reyes', firm:'Safe Harbor Insurance', phone:'(555) 010-4488',
+  email:'dana@safeharbor.example', review:'', photo:null, logo:null };
 const Branding = {
-  data:{ name:'Dana Reyes', firm:'Safe Harbor Insurance', phone:'(555) 010-4488',
-         email:'dana@safeharbor.example', review:'', photo:null, logo:null },
-  gen(txt,c1,c2,emoji){ const cv=document.createElement('canvas'); cv.width=cv.height=128;
-    const g=cv.getContext('2d'); const gr=g.createLinearGradient(0,0,128,128);
-    gr.addColorStop(0,c1); gr.addColorStop(1,c2); g.fillStyle=gr; g.fillRect(0,0,128,128);
-    g.font=emoji?'64px system-ui':'900 64px system-ui'; g.textAlign='center'; g.textBaseline='middle';
-    g.fillStyle='#fff'; g.fillText(emoji||txt,64,emoji?70:72); return cv.toDataURL(); },
-  load(){ try{ Object.assign(this.data, JSON.parse(localStorage.getItem('cq_brand')||'{}')); }catch(e){}
+  gen(txt,c1,c2,emoji){ const cv=document.createElement('canvas'); cv.width=cv.height=128; const g=cv.getContext('2d');
+    const gr=g.createLinearGradient(0,0,128,128); gr.addColorStop(0,c1); gr.addColorStop(1,c2); g.fillStyle=gr; g.fillRect(0,0,128,128);
+    g.font=emoji?'70px system-ui':'900 62px system-ui'; g.textAlign='center'; g.textBaseline='middle'; g.fillStyle='#fff';
+    g.fillText(emoji||txt,64,emoji?72:70); return cv.toDataURL(); },
+  load(){ try{ Object.assign(AG, JSON.parse(localStorage.getItem('cq_brand_ins')||'{}')); }catch(e){}
     const q=new URLSearchParams(location.search);
-    for (const [k,p] of [['name','agent'],['firm','firm'],['phone','phone'],['email','email'],['review','review']])
-      if (q.get(p)) this.data[k]=q.get(p);
-    if (!this.data.photo) this.data.photo=this.gen(this.data.name[0],'#8b5cf6','#fb7185');
-    if (!this.data.logo)  this.data.logo =this.gen('','#0ea5e9','#1e3a8a','🛡️'); },
-  apply(){ const d=this.data, first=d.name.split(' ')[0];
-    for (const id of ['hudAgentName','titleAgentName','endAgentName']) E(id).textContent=d.name;
-    for (const id of ['hudFirm','titleFirm','endFirm']) E(id).textContent=d.firm;
-    for (const id of ['hudAgentImg','titleAgentImg','endAgentImg']) E(id).src=d.photo;
-    for (const id of ['titleLogo','endLogo']) E(id).src=d.logo;
-    E('introAgent').textContent=d.name; E('endRefAgent').textContent=first;
-    E('endPhone').textContent=d.phone; E('endCall').href='tel:'+d.phone.replace(/[^\d+]/g,'');
-    E('endEmail').href='mailto:'+d.email+'?subject='+encodeURIComponent("You were my guide in COVERED — let's talk for real");
-    E('reviewBtn').href=d.review||'https://www.google.com/search?q='+encodeURIComponent(d.firm+' reviews'); },
-  bind(){ const d=this.data;
-    E('brandBtn').onclick=()=>{ E('bName').value=d.name; E('bFirm').value=d.firm; E('bPhone').value=d.phone;
-      E('bEmail').value=d.email; E('bReview').value=d.review; E('bPhotoPrev').src=d.photo; E('bLogoPrev').src=d.logo;
+    for(const[k,p]of[['name','agent'],['firm','firm'],['phone','phone'],['email','email'],['review','review']]) if(q.get(p))AG[k]=q.get(p);
+    if(!AG.photo) AG.photo=this.gen(AG.name[0]||'A','#8b5cf6','#fb7185');
+    if(!AG.logo)  AG.logo =this.gen('','#0ea5e9','#1e3a8a','🛡️'); },
+  apply(){ const first=AG.name.split(' ')[0];
+    E('hudName').textContent=AG.name; E('introAgent').textContent=AG.name; E('endName').textContent=AG.name;
+    for(const id of['hudFirm','titleFirm','endFirm']) E(id).textContent=AG.firm;
+    for(const id of['hudImg','endImg']) E(id).src=AG.photo;
+    for(const id of['titleLogo','endLogo']) E(id).src=AG.logo;
+    E('endRef').textContent=first;
+    E('villInline').textContent=THEME.villain.name; E('villName').textContent=THEME.villain.name;
+    E('villTag').textContent=THEME.villain.tag+' · your rival';
+    E('bossName').textContent=THEME.villain.name+' · '+THEME.villain.tag;
+    E('endPhone').textContent=AG.phone; E('endCall').href='tel:'+AG.phone.replace(/[^\d+]/g,'');
+    E('endEmail').href='mailto:'+AG.email+'?subject='+encodeURIComponent('You had my back in COVERED — let\'s talk for real');
+    E('reviewBtn').href=AG.review||'https://www.google.com/search?q='+encodeURIComponent(AG.firm+' reviews'); },
+  bind(){ E('brandBtn').onclick=()=>{ E('bName').value=AG.name; E('bFirm').value=AG.firm; E('bPhone').value=AG.phone;
+      E('bEmail').value=AG.email; E('bReview').value=AG.review; E('bPhotoPrev').src=AG.photo; E('bLogoPrev').src=AG.logo;
       E('brandPanel').classList.remove('hidden2'); };
     E('bClose').onclick=()=>E('brandPanel').classList.add('hidden2');
     const rf=(inp,cb)=>{ const f=inp.files[0]; if(!f)return; const r=new FileReader(); r.onload=()=>cb(r.result); r.readAsDataURL(f); };
-    E('bPhoto').onchange=e=>rf(e.target,u=>{ d.photo=u; E('bPhotoPrev').src=u; });
-    E('bLogo').onchange =e=>rf(e.target,u=>{ d.logo =u; E('bLogoPrev').src=u; });
-    E('bSave').onclick=()=>{ d.name=E('bName').value.trim()||d.name; d.firm=E('bFirm').value.trim()||d.firm;
-      d.phone=E('bPhone').value.trim()||d.phone; d.email=E('bEmail').value.trim()||d.email; d.review=E('bReview').value.trim();
-      localStorage.setItem('cq_brand',JSON.stringify(d)); this.apply(); E('brandPanel').classList.add('hidden2'); }; },
+    E('bPhoto').onchange=e=>rf(e.target,u=>{AG.photo=u;E('bPhotoPrev').src=u;});
+    E('bLogo').onchange =e=>rf(e.target,u=>{AG.logo=u;E('bLogoPrev').src=u;});
+    E('bSave').onclick=()=>{ AG.name=E('bName').value.trim()||AG.name; AG.firm=E('bFirm').value.trim()||AG.firm;
+      AG.phone=E('bPhone').value.trim()||AG.phone; AG.email=E('bEmail').value.trim()||AG.email; AG.review=E('bReview').value.trim();
+      localStorage.setItem('cq_brand_ins',JSON.stringify(AG)); this.apply(); E('brandPanel').classList.add('hidden2'); }; },
 };
 
 /* ==================== SFX ==================== */
-const SFX = {
-  ctx:null, muted:false,
-  ac(){ return this.ctx ||= new (window.AudioContext||window.webkitAudioContext)(); },
-  tone(f,t,d,type='sine',v=.1){ if(this.muted)return;
-    try{ const c=this.ac(),o=c.createOscillator(),g=c.createGain();
-      o.type=type; o.frequency.setValueAtTime(f,c.currentTime+t);
-      g.gain.setValueAtTime(0,c.currentTime+t);
-      g.gain.linearRampToValueAtTime(v,c.currentTime+t+.012);
-      g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+t+d);
-      o.connect(g); g.connect(c.destination); o.start(c.currentTime+t); o.stop(c.currentTime+t+d+.05); }catch(e){} },
-  jump(){ this.tone(430,0,.14,'square',.045); this.tone(650,.05,.12,'square',.03); },
-  djump(){ this.tone(600,0,.1,'square',.05); this.tone(900,.06,.14,'square',.045); },
-  land(){ this.tone(160,0,.1,'triangle',.06); },
-  coin(){ this.tone(988,0,.08,'square',.05); this.tone(1319,.05,.16,'square',.055); },
-  keep(){ [880,1109,1319,1760].forEach((f,i)=>this.tone(f,i*.06,.26,'sine',.09)); },
-  bounce(){ this.tone(300,0,.1,'sine',.09); this.tone(600,.06,.18,'sine',.07); },
-  splash(){ this.tone(300,0,.3,'sawtooth',.05); this.tone(180,.06,.35,'sawtooth',.045); },
-  check(){ [523,659,784].forEach((f,i)=>this.tone(f,i*.08,.25,'sine',.09)); },
-  unlock(){ [392,523,659,784,1047].forEach((f,i)=>this.tone(f,i*.09,.4,'sine',.1)); },
-  win(){ [523,659,784,1047,1319,1568].forEach((f,i)=>this.tone(f,i*.11,.5,'sine',.11)); },
-  radio(){ this.tone(1200,0,.05,'square',.03); this.tone(900,.07,.05,'square',.03); },
+const SFX={ ctx:null, muted:false,
+  ac(){ return this.ctx||=new (window.AudioContext||window.webkitAudioContext)(); },
+  t(f,at,d,ty='sine',v=.1){ if(this.muted)return; try{ const c=this.ac(),o=c.createOscillator(),g=c.createGain();
+    o.type=ty; o.frequency.setValueAtTime(f,c.currentTime+at); g.gain.setValueAtTime(0,c.currentTime+at);
+    g.gain.linearRampToValueAtTime(v,c.currentTime+at+.012); g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+at+d);
+    o.connect(g);g.connect(c.destination);o.start(c.currentTime+at);o.stop(c.currentTime+at+d+.05);}catch(e){} },
+  jump(){ this.t(420,0,.13,'square',.05); this.t(640,.05,.1,'square',.03); },
+  land(){ this.t(150,0,.08,'triangle',.05); },
+  coin(){ this.t(988,0,.07,'square',.05); this.t(1319,.05,.14,'square',.05); },
+  keep(){ [784,988,1319,1568].forEach((f,i)=>this.t(f,i*.06,.24,'sine',.09)); },
+  stomp(){ this.t(300,0,.1,'square',.06); this.t(150,.04,.14,'triangle',.06); },
+  hurt(){ this.t(200,0,.2,'sawtooth',.08); this.t(150,.08,.25,'sawtooth',.06); },
+  shield(){ this.t(600,0,.1,'sine',.06); this.t(900,.07,.16,'sine',.05); },
+  star(){ [1047,1319,1568].forEach((f,i)=>this.t(f,i*.05,.18,'sine',.07)); },
+  bosshit(){ this.t(220,0,.18,'square',.09); this.t(330,.06,.2,'sawtooth',.06); },
+  thunder(){ this.t(70,0,.5,'sawtooth',.09); this.t(50,.1,.6,'triangle',.07); },
+  win(){ [523,659,784,1047,1319,1568].forEach((f,i)=>this.t(f,i*.11,.5,'sine',.11)); },
+  radio(){ this.t(1200,0,.04,'square',.03); this.t(900,.06,.04,'square',.03); },
 };
 E('muteBtn').onclick=()=>{ SFX.muted=!SFX.muted; E('muteBtn').textContent=SFX.muted?'🔇':'🔊'; };
 
-/* ==================== INPUT (one stick + one button) ==================== */
-const Input = {
-  keys:{}, joy:{x:0,y:0}, jumpPressed:false, jumpHeld:false,
+/* ==================== INPUT ==================== */
+const Input={ left:false, right:false, jumpHeld:false, jumpPressed:false, _kb:{},
   init(){
-    addEventListener('keydown',e=>{ if(e.target.tagName==='INPUT')return;
-      if(!this.keys[e.code] && e.code==='Space'){ this.jumpPressed=true; }
-      this.keys[e.code]=true;
-      if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault(); });
-    addEventListener('keyup',e=>this.keys[e.code]=false);
-    const joyEl=E('joy'), knob=E('joyknob'); let jid=null;
-    const set=t=>{ const r=joyEl.getBoundingClientRect();
-      let dx=t.clientX-(r.left+r.width/2), dy=t.clientY-(r.top+r.height/2);
-      const m=Math.hypot(dx,dy), mx=48; if(m>mx){ dx=dx/m*mx; dy=dy/m*mx; }
-      this.joy.x=dx/mx; this.joy.y=dy/mx;
-      knob.style.transform=`translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px))`; };
-    joyEl.addEventListener('touchstart',e=>{ jid=e.changedTouches[0].identifier; set(e.changedTouches[0]); e.preventDefault(); },{passive:false});
-    joyEl.addEventListener('touchmove',e=>{ for(const t of e.changedTouches) if(t.identifier===jid) set(t); e.preventDefault(); },{passive:false});
-    const end=e=>{ for(const t of e.changedTouches) if(t.identifier===jid){ this.joy.x=this.joy.y=0; knob.style.transform='translate(-50%,-50%)'; } };
-    joyEl.addEventListener('touchend',end); joyEl.addEventListener('touchcancel',end);
-    E('btnJump').addEventListener('touchstart',e=>{ this.jumpPressed=true; this.keys.Space=true; e.preventDefault(); },{passive:false});
-    E('btnJump').addEventListener('touchend',()=>this.keys.Space=false);
+    addEventListener('keydown',e=>{ if(e.target.tagName==='INPUT')return; const k=e.code;
+      if(['ArrowLeft','KeyA'].includes(k)) this.left=true;
+      if(['ArrowRight','KeyD'].includes(k)) this.right=true;
+      if(['Space','ArrowUp','KeyW'].includes(k)){ if(!this._kb[k]) this.jumpPressed=true; this.jumpHeld=true; e.preventDefault(); }
+      this._kb[k]=true;
+      if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Space'].includes(k)) e.preventDefault();
+    });
+    addEventListener('keyup',e=>{ const k=e.code; this._kb[k]=false;
+      if(['ArrowLeft','KeyA'].includes(k)) this.left=false;
+      if(['ArrowRight','KeyD'].includes(k)) this.right=false;
+      if(['Space','ArrowUp','KeyW'].includes(k)) this.jumpHeld=false;
+    });
+    const hold=(el,on,off)=>{ el.addEventListener('touchstart',e=>{on();e.preventDefault();},{passive:false});
+      el.addEventListener('touchend',e=>{off();e.preventDefault();},{passive:false});
+      el.addEventListener('touchcancel',off); };
+    hold(E('leftBtn'), ()=>{this.left=true;E('leftBtn').classList.add('on');}, ()=>{this.left=false;E('leftBtn').classList.remove('on');});
+    hold(E('rightBtn'),()=>{this.right=true;E('rightBtn').classList.add('on');},()=>{this.right=false;E('rightBtn').classList.remove('on');});
+    hold(E('jumpBtn'), ()=>{this.jumpPressed=true;this.jumpHeld=true;}, ()=>{this.jumpHeld=false;});
     addEventListener('touchstart',()=>document.body.classList.add('touch'),{once:true});
   },
-  move(){ let x=(this.keys.KeyD||this.keys.ArrowRight?1:0)-(this.keys.KeyA||this.keys.ArrowLeft?1:0);
-    let z=(this.keys.KeyW||this.keys.ArrowUp?1:0)-(this.keys.KeyS||this.keys.ArrowDown?1:0);
-    x+=this.joy.x; z-=this.joy.y;
-    const m=Math.hypot(x,z); if(m>1){ x/=m; z/=m; }
-    if (m<.16 && Math.hypot(this.joy.x,this.joy.y)<.16 && !x && !z) return {x:0,z:0,m:0};
-    return {x,z,m:Math.min(1,m)}; },
   takeJump(){ const j=this.jumpPressed; this.jumpPressed=false; return j; },
-  holdingJump(){ return !!this.keys.Space; },
 };
 
 /* ==================== UI ==================== */
-const UI = {
-  q:[], busy:false,
-  say(text,dur=5600){ this.q.push({text,dur}); this.pump(); },
-  pump(){ if(this.busy||!this.q.length)return; this.busy=true;
-    const {text,dur}=this.q.shift();
-    const el=document.createElement('div'); el.className='agent-toast';
-    el.innerHTML=`<img src="${Branding.data.photo}" alt=""><div class="text-left">
-      <div class="text-[10.5px] font-black tracking-[2px] uppercase" style="color:#ffc95c">📻 ${Branding.data.name} · ${Branding.data.firm}</div>
-      <div class="text-[13.5px] font-bold leading-snug mt-0.5">${text}</div></div>`;
-    E('toastwrap').appendChild(el); SFX.radio();
+const UI={ q:[], busy:false,
+  say(text,dur=5200){ this.q.push({text,dur}); this.pump(); },
+  pump(){ if(this.busy||!this.q.length)return; this.busy=true; const {text,dur}=this.q.shift();
+    const el=document.createElement('div'); el.className='radio';
+    el.innerHTML=`<img src="${AG.photo}"><div><div class="rk">📻 ${AG.name} · ${AG.firm}</div><div class="rt">${text}</div></div>`;
+    E('toastWrap').appendChild(el); SFX.radio();
     setTimeout(()=>{ el.classList.add('bye'); setTimeout(()=>{ el.remove(); this.busy=false; this.pump(); },300); },dur); },
-  banner(k,t){ E('bank').textContent=k; E('bant').textContent=t;
-    const b=E('banner'); b.classList.remove('on'); void b.offsetWidth; b.classList.add('on'); },
-  obj(t){ E('objText').textContent=t; },
-  keep(n){ E('hudKeep').textContent=n; },
-  coin(n){ E('hudCoin').textContent=n; },
-  compass(a,d){ E('cneedle').style.transform=`rotate(${a}rad)`; E('cdist').textContent=Math.round(d)+'m'; },
+  banner(k,t){ E('bankK').textContent=k; E('bankT').textContent=t; const b=E('banner'); b.classList.remove('on'); void b.offsetWidth; b.classList.add('on'); },
+  obj(t){ E('objText').innerHTML=t; },
+  hearts(cur,max){ const el=E('hearts'); el.innerHTML=''; for(let i=0;i<max;i++){ const s=document.createElement('span'); s.className='h'+(i<cur?'':' gone'); s.textContent='❤️'; el.appendChild(s); } },
+  keep(n){ E('hudKeep').textContent=n; }, coin(n){ E('hudCoin').textContent=n; },
+  rail(p){ E('railFill').style.width=(p*100).toFixed(1)+'%'; E('railHero').style.left=(p*100).toFixed(1)+'%'; },
+  bossHP(f){ E('bossHPfill').style.width=(f*100)+'%'; },
+  flash(a=.8){ const f=E('flash'); f.style.transition='none'; f.style.opacity=a; requestAnimationFrame(()=>{ f.style.transition='opacity .5s'; f.style.opacity=0; }); },
   fade(on){ E('fade').classList.toggle('on',on); },
 };
 
-/* ==================== GAME ==================== */
-const Game = {
-  started:false, over:false, keeps:0, coins:0, t0:0, checkpoint:null,
-  canDouble:false, hasDouble:false, name:'Hero',
-  platforms:[], movers:[], pads:[], coinsL:[], keepsL:[], camps:[], walls:[],
+/* ==================== LEVEL DATA ==================== */
+const GY = 600;                    // ground top (world y)
+const LEVEL = (()=>{
+  const groundSpans=[], plats=[], coins=[], keeps=[], enemies=[], fires=[], hailZones=[], camps=[], movers=[], deco=[];
+  const solid=[];                  // filled after
+  // helper builders
+  const G=(x0,x1)=>groundSpans.push([x0,x1]);
+  const P=(x,y,w,oneway=true)=>plats.push({x0:x,x1:x+w,y,oneway});
+  const coinRow=(x,y,n,dx=46)=>{ for(let i=0;i<n;i++) coins.push({x:x+i*dx,y,got:false,ph:Math.random()*7}); };
+  const coinArc=(x,y,n,dx,rise)=>{ for(let i=0;i<n;i++){ const t=i/(n-1)-.5; coins.push({x:x+i*dx,y:y-rise*(1-4*t*t),got:false,ph:Math.random()*7}); } };
+  const K=(x,y,i)=>keeps.push({x,y,got:false,idx:i,ph:Math.random()*7});
+  const EN=(x0,x1,y)=>enemies.push({x:(x0+x1)/2,y,x0,x1,dir:1,alive:true,ph:Math.random()*7,vy:0,squash:0});
+  const FIRE=(x,w)=>fires.push({x,w,ph:Math.random()*7});
+  const HAIL=(x0,x1)=>hailZones.push({x0,x1});
+  const CAMP=(x,id)=>camps.push({x,id,done:false});
 
-  /* ---------- boot ---------- */
+  /* ---- ACT 1 · Sunny Maple Street (gentle intro) ---- */
+  G(-200,760);
+  coinRow(180,GY-70,4); EN(360,560,GY);
+  deco.push({t:'house',x:120,z:1},{t:'tree',x:300},{t:'house',x:640,z:0},{t:'bush',x:470});
+  P(560,GY-140,120); coinArc(575,GY-160,3,40,30);
+  // pit 760..930 (flood) — jumpable with a helper platform
+  P(800,GY-90,110); coinRow(815,GY-130,2,40);
+  G(930,1560);
+  EN(1040,1240,GY); FIRE(1330,70);
+  P(1080,GY-150,130); K(1145,GY-190,0);            // keepsake 1 on a ledge
+  coinRow(1360,GY-70,3);
+  deco.push({t:'house',x:1000,z:0},{t:'tree',x:1260},{t:'bush',x:1420});
+  CAMP(1470,1);                                     // agent camp 1 (shield + checkpoint)
+  // pit 1560..1780 crossed by two stepping platforms
+  P(1600,GY-110,90); P(1710,GY-150,90); coinArc(1640,GY-190,4,34,26);
+
+  /* ---- ACT 2 · The Storm Rolls In (hazards ramp) ---- */
+  G(1780,2420);
+  EN(1880,2080,GY); EN(2180,2360,GY); FIRE(2010,80);
+  HAIL(1980,2360);
+  P(1960,GY-160,120); K(2020,GY-200,1);            // keepsake 2 up high
+  coinRow(2130,GY-70,3); FIRE(2300,70);
+  deco.push({t:'house2',x:1900,z:0},{t:'tree',x:2260});
+  // big flood 2420..2720 crossed by a moving platform
+  movers.push({x0:2450,x1:2690,y:GY-120,w:120,axis:'x',amp:118,speed:.9,phase:0});
+  coinArc(2470,GY-180,4,44,30);
+  G(2720,3280);
+  EN(2820,3020,GY); FIRE(2900,70); HAIL(2760,3120);
+  P(2860,GY-170,130); coinRow(2880,GY-210,2,40);
+  P(3060,GY-150,120); K(3115,GY-190,2);            // keepsake 3
+  deco.push({t:'house2',x:2800,z:0},{t:'tree',x:3160});
+  CAMP(3180,2);                                     // agent camp 2 (raft bridge + shield)
+  // flood 3280..3540 — agent's raft bridge fills this after camp 2
+  for(let bx=3300;bx<3540;bx+=60) plats.push({x0:bx,x1:bx+58,y:GY-8,oneway:false,bridge:true,shown:false});
+
+  /* ---- ACT 3 · Havoc's Approach (stormy, tough) ---- */
+  G(3540,4180);
+  EN(3640,3840,GY); EN(3940,4140,GY); FIRE(3720,70); FIRE(4020,80);
+  HAIL(3560,4180);
+  P(3660,GY-150,110); P(3820,GY-210,110); coinArc(3680,GY-250,4,40,28);
+  K(3875,GY-250,3);                                 // keepsake 4 high on the 2nd ledge
+  P(4000,GY-160,120); coinRow(4020,GY-200,2,40);
+  deco.push({t:'house2',x:3600,z:0},{t:'tree',x:3960});
+  // pit 4180..4400 with platforms
+  P(4220,GY-120,90); P(4320,GY-170,90); coinArc(4240,GY-210,3,40,24);
+  G(4400,5400);                                     // long run-up + boss arena
+  K(4520,GY-70,4);                                  // keepsake 5 (last, on the ground before the arena)
+  coinRow(4600,GY-70,4);
+  HAIL(4640,4760);
+  deco.push({t:'gate',x:4780});                     // stormfront gate into the arena
+  CAMP(4820,3);                                     // boss intro camp
+  // boss arena flat 4860..5360; agent stands on left ledge
+  P(4880,GY-150,90,false);                          // agent's ledge (solid)
+
+  const bossX=5100, goalX=5360, length=5560;
+
+  // build solids from ground spans + platforms
+  for(const[x0,x1]of groundSpans) solid.push({x0,x1,y0:GY,y1:GY+600,oneway:false,ground:true});
+  for(const p of plats) solid.push({x0:p.x0,x1:p.x1,y0:p.y,y1:p.y+(p.oneway?16:600),oneway:p.oneway,ref:p});
+  return { groundSpans, plats, coins, keeps, enemies, fires, hailZones, camps, movers, deco, solid, bossX, goalX, length,
+           spawn:{x:80,y:GY} };
+})();
+
+/* ==================== GAME ==================== */
+const Game={
+  state:'title', keeps:0, coins:0, hearts:3, t0:0, checkpoint:null, name:'Hero',
+  hero:null, cam:{x:0,y:0}, particles:[], hail:[], stars:[], boss:null,
+  act:0, iframe:0, shield:false, empowered:0, dead:0, shake:0, weather:0, lightning:0, havocFly:null, won:false,
+
   init(){
     Branding.load(); Branding.apply(); Branding.bind(); Input.init();
-    this.checkpoint=V3(0,1,4);
-    const canvas=E('c3d');
-    this.engine=new BABYLON.Engine(canvas,true,{stencil:true,alpha:false});
-    this.engine.setHardwareScalingLevel(1/Math.min(devicePixelRatio||1,1.75));
-    const scene=this.scene=new BABYLON.Scene(this.engine);
-    scene.clearColor=BABYLON.Color4.FromHexString('#8ed2f7ff');
-    scene.fogMode=BABYLON.Scene.FOGMODE_EXP2; scene.fogDensity=.0045; scene.fogColor=C3('#a8d8f0');
-    // lights
-    const hemi=new BABYLON.HemisphericLight('h',V3(.2,1,.1),scene);
-    hemi.intensity=.55; hemi.diffuse=C3('#dff0ff'); hemi.groundColor=C3('#6a8a5a');
-    const sun=new BABYLON.DirectionalLight('sun',V3(-.4,-.85,.32),scene);
-    sun.position=V3(30,60,-40); sun.intensity=1.25; sun.diffuse=C3('#fff2d8');
-    this.shadow=new BABYLON.ShadowGenerator(1024,sun);
-    this.shadow.useBlurExponentialShadowMap=true; this.shadow.blurKernel=16; this.shadow.darkness=.55;
-    // camera
-    this.cam=new BABYLON.FreeCamera('cam',V3(0,7,-9),scene);
-    this.cam.fov=.95; this.cam.minZ=.1; this.cam.maxZ=800;
-    // post FX — the 1000% button
-    const pipe=new BABYLON.DefaultRenderingPipeline('p',true,scene,[this.cam]);
-    pipe.fxaaEnabled=true;
-    pipe.bloomEnabled=true; pipe.bloomThreshold=.72; pipe.bloomWeight=.32; pipe.bloomKernel=48; pipe.bloomScale=.6;
-    pipe.imageProcessing.toneMappingEnabled=true;
-    pipe.imageProcessing.toneMappingType=BABYLON.ImageProcessingConfiguration.TONEMAPPING_ACES;
-    pipe.imageProcessing.exposure=1.18; pipe.imageProcessing.contrast=1.14;
-    pipe.imageProcessing.vignetteEnabled=true; pipe.imageProcessing.vignetteWeight=1.6;
-    pipe.imageProcessing.vignetteColor=new BABYLON.Color4(.05,.07,.18,0);
-    this.glow=new BABYLON.GlowLayer('g',scene,{blurKernelSize:48}); this.glow.intensity=.65;
-
-    this.buildArt();
-    this.buildLevel();
-    this.hero=this.makeHero();
-    this.agentAt=[]; // agent NPC per camp made in buildLevel
-    this.makeParticles();
-
-    this.pos=V3(0,0,4); this.vy=0; this.grounded=true; this.heading=0;
-    this.coyote=0; this.jbuf=0; this.usedDouble=false; this.groundPlat=null;
-    this.animT=0; this.squash=1; this.blinkT=0;
-
+    this.canvas=E('game'); this.ctx=this.canvas.getContext('2d');
+    this.resize(); addEventListener('resize',()=>this.resize());
+    this.buildTextures();
+    this.hero={ x:LEVEL.spawn.x, y:LEVEL.spawn.y, w:38, h:56, vx:0, vy:0, grounded:true, face:1, phase:0,
+      coyote:0, buffer:0, jumpCut:false, squash:1, blink:0, prevBottom:LEVEL.spawn.y };
+    this.checkpoint={x:LEVEL.spawn.x,y:LEVEL.spawn.y};
+    this.agent={ x:LEVEL.camps[0].x, y:GY, wave:0 };  // in-world agent, repositioned per camp
     E('startBtn').onclick=()=>this.start();
     E('shareBtn').onclick=()=>this.share();
     E('againBtn').onclick=()=>location.reload();
-    addEventListener('resize',()=>this.engine.resize());
-
-    this.engine.runRenderLoop(()=>{ this.tick(Math.min(this.engine.getDeltaTime()/1000,.05)); scene.render(); });
+    this.last=now(); requestAnimationFrame(this.frame.bind(this));
   },
 
-  /* ---------- materials & textures ---------- */
-  mat(hex,{spec=.05,emis=null,rough=null}={}){
-    const m=new BABYLON.StandardMaterial('m'+hex,this.scene);
-    m.diffuseColor=C3(hex); m.specularColor=new BABYLON.Color3(spec,spec,spec);
-    if(emis)m.emissiveColor=C3(emis);
-    return m;
-  },
-  texMat(draw,{size=256,spec=.04,scaleU=1,scaleV=1}={}){
-    const dt=new BABYLON.DynamicTexture('dt',{width:size,height:size},this.scene,true);
-    draw(dt.getContext(),size); dt.update();
-    const m=new BABYLON.StandardMaterial('tm',this.scene);
-    m.diffuseTexture=dt; dt.uScale=scaleU; dt.vScale=scaleV;
-    m.specularColor=new BABYLON.Color3(spec,spec,spec);
-    return m;
-  },
-  buildArt(){
-    const S=this.scene;
-    // --- palette materials with hand-drawn textures ---
-    this.grassM=this.texMat((g,s)=>{ g.fillStyle='#6db54f'; g.fillRect(0,0,s,s);
-      for(let i=0;i<420;i++){ g.fillStyle=['#7fc75f','#5da344','#8fd06c'][i%3];
-        g.fillRect(Math.random()*s,Math.random()*s,3,7); }
-      g.fillStyle='rgba(255,255,255,.05)'; g.fillRect(0,0,s,10); },{scaleU:2,scaleV:2});
-    this.dirtM=this.mat('#8a6a48');
-    this.roofM=this.texMat((g,s)=>{ g.fillStyle='#c2563e'; g.fillRect(0,0,s,s);
-      for(let r=0;r<8;r++)for(let c=0;c<8;c++){ g.fillStyle=(r+c)%2?'#b34c36':'#cc604a';
-        g.beginPath(); g.arc(c*32+16,r*32+30,16,Math.PI,0); g.fill(); } },{scaleU:2,scaleV:2});
-    this.plankM=this.texMat((g,s)=>{ g.fillStyle='#a8784e'; g.fillRect(0,0,s,s);
-      for(let i=0;i<6;i++){ g.fillStyle=i%2?'#9a6c44':'#b5875c'; g.fillRect(0,i*43,s,40);
-        g.fillStyle='#7a5434'; g.fillRect(0,i*43+40,s,3); }
-      for(let i=0;i<24;i++){ g.fillStyle='#6a4a2c'; g.beginPath();
-        g.arc(Math.random()*s,Math.random()*s,2.4,0,7); g.fill(); } });
-    this.stoneM=this.texMat((g,s)=>{ g.fillStyle='#b8c0cc'; g.fillRect(0,0,s,s);
-      for(let i=0;i<70;i++){ g.fillStyle=['#aab2c0','#c4ccd8','#9aa4b4'][i%3];
-        const x=Math.random()*s,y=Math.random()*s; g.beginPath(); g.arc(x,y,6+Math.random()*12,0,7); g.fill(); } });
-    this.wallM=this.mat('#e8ddc4');
-    this.goldM=this.mat('#ffc95c',{emis:'#7a5410',spec:.6});
-    this.starM=this.mat('#ffd97a',{emis:'#ffb02e',spec:.4});
-    this.padM=this.mat('#ff5f7e',{emis:'#5a1020',spec:.3});
-    this.tealM=this.mat('#38bdf8',{emis:'#0a2a40'});
-    // --- sky dome ---
-    const sky=BABYLON.MeshBuilder.CreateSphere('sky',{diameter:700,sideOrientation:BABYLON.Mesh.BACKSIDE},S);
-    const skyMat=new BABYLON.StandardMaterial('sky',S);
-    const sdt=new BABYLON.DynamicTexture('skyT',{width:16,height:256},S,true);
-    const sg=sdt.getContext(); const grad=sg.createLinearGradient(0,0,0,256);
-    grad.addColorStop(0,'#3f9ae8'); grad.addColorStop(.42,'#7ec8f7'); grad.addColorStop(.72,'#cfeeff'); grad.addColorStop(1,'#ffe7c4');
-    sg.fillStyle=grad; sg.fillRect(0,0,16,256); sdt.update();
-    skyMat.emissiveTexture=sdt; skyMat.diffuseColor=BABYLON.Color3.Black(); skyMat.specularColor=BABYLON.Color3.Black();
-    skyMat.disableLighting=true; skyMat.fogEnabled=false; sky.material=skyMat; sky.applyFog=false;
-    // sun disc
-    const sunD=BABYLON.MeshBuilder.CreateDisc('sund',{radius:22},S);
-    sunD.position=V3(-120,150,240); sunD.billboardMode=7;
-    sunD.material=this.mat('#fff8dc',{emis:'#fff3c0'}); sunD.material.disableLighting=true;
-    sunD.material.emissiveColor=C3('#fff3c0'); sunD.applyFog=false;
-    // --- water (the flood) ---
-    this.waterT=new BABYLON.DynamicTexture('w',{width:256,height:256},S,true);
-    const wg=this.waterT.getContext(); wg.fillStyle='#2f8ec4'; wg.fillRect(0,0,256,256);
-    for(let i=0;i<40;i++){ wg.strokeStyle='rgba(255,255,255,'+(0.06+Math.random()*.12)+')'; wg.lineWidth=2+Math.random()*3;
-      wg.beginPath(); const y=Math.random()*256; wg.moveTo(0,y); wg.bezierCurveTo(60,y-14,180,y+14,256,y); wg.stroke(); }
-    this.waterT.update();
-    const water=BABYLON.MeshBuilder.CreateGround('water',{width:900,height:900},S);
-    water.position.y=-.62; water.position.z=110;
-    const wm=new BABYLON.StandardMaterial('wm',S);
-    wm.diffuseTexture=this.waterT; this.waterT.uScale=26; this.waterT.vScale=26;
-    wm.specularColor=new BABYLON.Color3(.5,.55,.6); wm.specularPower=80; wm.alpha=.94;
-    water.material=wm;
-    // --- distant hills ---
-    for (const [x,z,sc,c] of [[-140,120,90,'#7fb069'],[150,160,110,'#6da35c'],[-90,260,120,'#87b877'],[120,300,140,'#79a86a'],[0,340,150,'#8fbd80']]){
-      const h=BABYLON.MeshBuilder.CreateSphere('hill',{diameter:sc,segments:8},S);
-      h.position=V3(x,-sc*.32,z); h.scaling.y=.5; h.material=this.mat(c); h.freezeWorldMatrix();
-    }
-    // --- clouds ---
-    this.clouds=[];
-    for (let i=0;i<9;i++){
-      const c=new BABYLON.TransformNode('cl',S);
-      const m=this.mat('#ffffff',{emis:'#f2f6ff'}); m.alpha=.96;
-      for (let k=0;k<4;k++){ const p=BABYLON.MeshBuilder.CreateSphere('cp',{diameter:9+Math.random()*8,segments:6},S);
-        p.parent=c; p.position=V3((k-1.5)*5.5+Math.random()*2,(Math.random()-.5)*2,Math.random()*3); p.scaling.y=.55; p.material=m; }
-      c.position=V3((Math.random()-.5)*260, 34+Math.random()*26, Math.random()*260-20);
-      this.clouds.push(c);
-    }
+  resize(){
+    const dpr=Math.min(devicePixelRatio||1,2), cw=innerWidth, ch=innerHeight;
+    this.canvas.width=cw*dpr; this.canvas.height=ch*dpr; this.dpr=dpr; this.cw=cw; this.ch=ch;
+    const BAND=560; let sc=ch/BAND, viewW=cw/sc;
+    if(viewW<860){ sc=cw/860; viewW=860; }
+    this.sc=sc; this.viewW=viewW; this.viewH=ch/sc;
   },
 
-  /* ---------- level pieces ---------- */
-  plat(x,top,z,w,d,matKey='grassM',{deep=true,sideM='dirtM'}={}){
-    const h = deep ? Math.max(1.4, top+1.3) : 1.2;
-    const b=BABYLON.MeshBuilder.CreateBox('p',{width:w,depth:d,height:h},this.scene);
-    b.position=V3(x,top-h/2,z);
-    b.material=this[matKey]; b.receiveShadows=true;
-    this.shadow.addShadowCaster(b);
-    // colored skirt (soil) under top for grass tiles
-    if (matKey==='grassM' && h>1.6){
-      const skirt=BABYLON.MeshBuilder.CreateBox('sk',{width:w+.06,depth:d+.06,height:h-.85},this.scene);
-      skirt.position=V3(x,top-.85-(h-.85)/2,z); skirt.material=this[sideM]; skirt.receiveShadows=true;
-    }
-    b.freezeWorldMatrix();
-    const P={x,z,w,d,top,mesh:b,id:this.platforms.length};
-    this.platforms.push(P);
-    return P;
+  /* ---- textures / offscreen layers ---- */
+  buildTextures(){
+    // grass strip pattern
+    const g=document.createElement('canvas'); g.width=64; g.height=64; const gc=g.getContext('2d');
+    gc.fillStyle='#5aa845'; gc.fillRect(0,0,64,64);
+    for(let i=0;i<70;i++){ gc.fillStyle=['#6fbe57','#4f9a3c','#7fce66'][i%3]; gc.fillRect(Math.random()*64,Math.random()*64,2,5); }
+    this.grassPat=this.ctx.createPattern(g,'repeat');
+    // dirt pattern
+    const d=document.createElement('canvas'); d.width=64; d.height=64; const dc=d.getContext('2d');
+    dc.fillStyle='#8a6444'; dc.fillRect(0,0,64,64);
+    for(let i=0;i<40;i++){ dc.fillStyle=['#7a5638','#9a7150','#6e4c30'][i%3]; dc.beginPath();
+      dc.arc(Math.random()*64,Math.random()*64,rand(1.5,3.5),0,7); dc.fill(); }
+    this.dirtPat=this.ctx.createPattern(d,'repeat');
+    // hills layer
+    this.hills=this.makeLayer(1400,300,(c,w,h)=>{ for(let k=0;k<3;k++){ const col=['#a9c9e8','#93b8dd','#b7d4ee'][k];
+      c.fillStyle=col; c.beginPath(); const base=h-k*8;
+      for(let x=-40;x<=w+40;x+=80){ c.lineTo(x, base-Math.abs(Math.sin((x+k*140)*.01))*(90-k*22)-30); } c.lineTo(w,h); c.lineTo(0,h); c.closePath(); c.fill(); } });
+    // town silhouette
+    this.town=this.makeLayer(1400,260,(c,w,h)=>{ let x=0; while(x<w){ const bw=rand(40,90), bh=rand(70,170);
+      c.fillStyle='#7d92b8'; c.fillRect(x,h-bh,bw,bh);
+      c.fillStyle='#8fa4c8'; c.fillRect(x,h-bh,bw,7);
+      c.fillStyle='rgba(255,235,170,.55)'; for(let wy=h-bh+16;wy<h-8;wy+=18) for(let wx=x+6;wx<x+bw-6;wx+=15) if(Math.random()<.55) c.fillRect(wx,wy,7,9);
+      x+=bw+rand(6,20); } });
+    // near tree/hedge line
+    this.trees=this.makeLayer(1200,220,(c,w,h)=>{ let x=20; while(x<w){ const tw=rand(50,90);
+      c.fillStyle='#4b8f3d'; c.beginPath(); c.ellipse(x+tw/2,h-30,tw/2,rand(46,70),0,0,7); c.fill();
+      c.fillStyle='#5aa348'; c.beginPath(); c.ellipse(x+tw/2-8,h-40,tw/2.6,rand(38,54),0,0,7); c.fill();
+      c.fillStyle='#3f7a33'; c.fillRect(x+tw/2-5,h-34,10,34); x+=tw+rand(20,60); } });
+    // cloud sprite
+    this.cloud=this.makeLayer(220,110,(c,w,h)=>{ c.fillStyle='#ffffff';
+      const puffs=[[60,70,38],[110,58,46],[160,72,34],[95,78,42],[135,80,40]];
+      for(const[px,py,pr]of puffs){ c.beginPath(); c.arc(px,py,pr,0,7); c.fill(); }
+      c.fillStyle='rgba(180,205,235,.5)'; for(const[px,py,pr]of puffs){ c.beginPath(); c.arc(px,py+pr*.5,pr*.85,0,Math.PI); c.fill(); } });
+    this.clouds=[]; for(let i=0;i<7;i++) this.clouds.push({x:rand(0,LEVEL.length),y:rand(40,180),s:rand(.6,1.2),v:rand(6,14)});
   },
-  moverP(P,axis,amp,speed,phase=0){ P.base={x:P.x,z:P.z,top:P.top}; P.axis=axis; P.amp=amp; P.speed=speed; P.phase=phase;
-    P.mesh.unfreezeWorldMatrix(); this.movers.push(P); return P; },
-  pad(x,top,z){
-    const base=BABYLON.MeshBuilder.CreateCylinder('pad',{diameter:2.1,height:.5},this.scene);
-    base.position=V3(x,top+.25,z); base.material=this.padM; this.shadow.addShadowCaster(base);
-    const ring=BABYLON.MeshBuilder.CreateTorus('padr',{diameter:2.1,thickness:.22},this.scene);
-    ring.position=V3(x,top+.52,z); ring.material=this.mat('#ffe08a',{emis:'#ffb02e'});
-    this.pads.push({x,z,top:top+.5,base,ring,t:Math.random()*7});
-  },
-  coin(x,y,z){
-    const c=BABYLON.MeshBuilder.CreateCylinder('c',{diameter:.85,height:.14,tessellation:18},this.scene);
-    c.rotation.x=Math.PI/2; c.position=V3(x,y,z); c.material=this.goldM;
-    this.coinsL.push({x,y,z,mesh:c,got:false,ph:Math.random()*7});
-  },
-  keep(x,y,z,label,line){
-    const root=new BABYLON.TransformNode('k',this.scene);
-    const core=BABYLON.MeshBuilder.CreatePolyhedron('kc',{type:2,size:.5},this.scene);
-    core.material=this.starM; core.parent=root;
-    const halo=BABYLON.MeshBuilder.CreateTorus('kh',{diameter:1.7,thickness:.09},this.scene);
-    halo.material=this.mat('#ffe9b0',{emis:'#ffc95c'}); halo.parent=root;
-    const beam=BABYLON.MeshBuilder.CreateCylinder('kb',{diameter:.5,height:40},this.scene);
-    beam.position.y=20; beam.parent=root;
-    const bm=this.mat('#ffc95c',{emis:'#ffc95c'}); bm.alpha=.13; bm.disableLighting=true; beam.material=bm;
-    root.position=V3(x,y,z);
-    this.keepsL.push({x,y,z,root,got:false,label,line,ph:Math.random()*7});
-  },
-  flag(x,top,z){
-    const pole=BABYLON.MeshBuilder.CreateCylinder('fp',{diameter:.16,height:3.4},this.scene);
-    pole.position=V3(x,top+1.7,z); pole.material=this.stoneM;
-    const f=BABYLON.MeshBuilder.CreatePlane('ff',{width:1.5,height:.9},this.scene);
-    f.position=V3(x+.78,top+2.9,z); f.material=this.mat('#38bdf8',{emis:'#0a3050'});
-    f.material.backFaceCulling=false; this.flags=this.flags||[]; this.flags.push(f);
-  },
-  tent(x,top,z){
-    this.tentM=this.tentM||this.mat('#2b9fd8');
-    this.doorM=this.doorM||this.mat('#0e2b40');
-    const t=BABYLON.MeshBuilder.CreateCylinder('tent',{diameter:3.6,height:2.6,tessellation:4},this.scene);
-    t.rotation.y=Math.PI/4; t.scaling.z=1.2; t.position=V3(x,top+1.3,z);
-    t.material=this.tentM; this.shadow.addShadowCaster(t);
-    const door=BABYLON.MeshBuilder.CreatePlane('td',{width:1,height:1.4},this.scene);
-    door.position=V3(x,top+.7,z-1.62); door.material=this.doorM;
-  },
-  arch(x,top,z){
-    const m=this.goldM;
-    for (const dx of [-2.6,2.6]){ const c=BABYLON.MeshBuilder.CreateCylinder('ac',{diameter:.7,height:5},this.scene);
-      c.position=V3(x+dx,top+2.5,z); c.material=m; this.shadow.addShadowCaster(c); }
-    const topBar=BABYLON.MeshBuilder.CreateBox('ab',{width:6.6,height:.8,depth:1},this.scene);
-    topBar.position=V3(x,top+5.2,z); topBar.material=m; this.shadow.addShadowCaster(topBar);
-    const star=BABYLON.MeshBuilder.CreatePolyhedron('as',{type:2,size:.6},this.scene);
-    star.position=V3(x,top+6.3,z); star.material=this.starM; this.archStar=star;
-  },
-  rock(x,top,z,s=1){
-    const r=BABYLON.MeshBuilder.CreateSphere('rk',{diameter:1.6*s,segments:5},this.scene);
-    r.position=V3(x,top+.5*s,z); r.scaling.y=.72; r.material=this.stoneM;
-    this.shadow.addShadowCaster(r); r.freezeWorldMatrix();
-    this.walls.push({x,z,w:1.5*s,d:1.5*s,top:top+1.1*s});
-  },
-  tree(x,top,z,s=1){
-    const tr=BABYLON.MeshBuilder.CreateCylinder('tt',{diameter:.5*s,height:2.2*s},this.scene);
-    tr.position=V3(x,top+1.1*s,z); tr.material=this.plankM; this.shadow.addShadowCaster(tr);
-    for (let i=0;i<3;i++){ const l=BABYLON.MeshBuilder.CreateSphere('tl',{diameter:(2.6-i*.6)*s,segments:6},this.scene);
-      l.position=V3(x,top+(2.1+i*.75)*s,z); l.material=this.mat(['#4e9e3f','#5eae4c','#70bd5c'][i]);
-      this.shadow.addShadowCaster(l); l.freezeWorldMatrix(); }
-    this.walls.push({x,z,w:.8*s,d:.8*s,top:top+2*s});
-  },
-  sunkHouse(x,z,rot=0){
-    const g=new BABYLON.TransformNode('sh',this.scene);
-    const body=BABYLON.MeshBuilder.CreateBox('shb',{width:6,height:4,depth:5},this.scene);
-    body.parent=g; body.position.y=.4; body.material=this.wallM;
-    const roof=BABYLON.MeshBuilder.CreateCylinder('shr',{diameter:6.4,height:5.6,tessellation:3},this.scene);
-    roof.parent=g; roof.rotation.z=Math.PI/2; roof.rotation.x=Math.PI/2; roof.position.y=3.1; roof.material=this.roofM;
-    const win=BABYLON.MeshBuilder.CreatePlane('shw',{width:1,height:1},this.scene);
-    win.parent=g; win.position=V3(1.2,1.4,-2.51); win.material=this.mat('#ffe3a0',{emis:'#c89440'});
-    g.position=V3(x,-1.6,z); g.rotation=V3(-.06+Math.random()*.12,rot,.05+Math.random()*.1);
-    this.shadow.addShadowCaster(body); this.shadow.addShadowCaster(roof);
-  },
+  makeLayer(w,h,fn){ const c=document.createElement('canvas'); c.width=w; c.height=h; fn(c.getContext('2d'),w,h); return c; },
 
-  /* ---------- the level ---------- */
-  buildLevel(){
-    const K=[
-      ["the Kims' wedding album","Fished from the reeds and photographed page by page — their contents claim files tonight. 📸"],
-      ["Mr. Okafor's guitar","This guitar survived the '09 flood too. Instrument rider: activated. 🎸"],
-      ["Mia's science-fair trophy","One very relieved fifth-grader. You're her favorite hero now. 🏆"],
-      ["Rosa's food-truck sign","Business-interruption coverage kicks in today — Rosa reopens Friday! 🌮"],
-      ["the Khans' house deed","Original documents, safe and dry. I'll walk them through the whole rebuild. 📜"],
-      ["Grandpa Lou's pocket watch","Sixty years in the family, zero scratches. Better than any antiques rider. ⌚"],
-      ["the bakery's recipe box","Third-generation sourdough recipes — irreplaceable. Document EVERYTHING. 🥖"],
-      ["the school's championship flag","The whole town is going to cheer when they see this flying again. 🏁"],
-      ["the church's weathervane","The wind carried it half a valley. Steeple repair claim: approved. ⛪"],
-      ["the mail drone's parcel","Caught between worlds — literally. Parcel insured, obviously. 📦"],
-    ];
-    let ki=0; const KP=(x,y,z)=>{ this.keep(x,y,z,...K[ki]); ki++; };
-    /* ===== ZONE 1 — Maple Shallows (grass, y≈0) ===== */
-    this.plat(0,0,4,14,12);                       // start island
-    this.tent(-4,0,7); this.flag(-6,0,4.5); this.tree(5.4,0,8,1.1); this.tree(-5.8,0,.6,.9);
-    this.camps.push({x:-4,z:7,y:0,id:0,done:false});
-    this.coin(0,.9,8); this.coin(0,.9,10); this.coin(0,.9,12);
-    this.plat(0,0,14.5,4,3,'stoneM');
-    this.plat(0,0,20.5,8,6); this.rock(2.6,0,21,1.1);
-    this.plat(-3,0,27,4.4,3.6,'stoneM'); this.coin(-3,1,27);
-    this.plat(3,0,32,4.4,3.6,'stoneM');  this.coin(3,1,32);
-    this.plat(-2,0,37,4.4,3.6,'stoneM'); this.coin(-2,1,37);
-    this.plat(0,0,45,10,8); KP(0,1.2,46); this.tree(-4,0,47,1);
-    const M1=this.plat(0,0,52.5,4,3,'plankM',{deep:false}); this.moverP(M1,'x',3.6,1.1);
-    this.plat(0,0,60.5,10,7);
-    this.plat(3,0.95,60,2.3,2.3,'plankM',{deep:false}); this.walls.push({x:3,z:60,w:2.3,d:2.3,top:.95});
-    this.plat(3,1.9,62.6,2.3,2.3,'plankM',{deep:false}); this.walls.push({x:3,z:62.6,w:2.3,d:2.3,top:1.9});
-    KP(3,3,62.6);
-    this.tent(-3.4,0,64); this.flag(-5.4,0,61.5);
-    this.camps.push({x:-3.4,z:64,y:0,id:1,done:false});
-    KP(-5.8,1.2,66.5);
-    /* ===== ZONE 2 — Rooftop Rapids (roofs, climbing) ===== */
-    this.plat(0,1.5,70.5,6,4,'stoneM');
-    this.plat(0,2.4,76.5,8,6.4,'roofM'); this.coin(0,3.4,76);
-    this.plat(0,3.8,85.5,7,5.6,'roofM'); this.pad(2,3.8,87);
-    this.plat(0,6.2,94.5,7,5.6,'roofM');
-    this.plat(-2.2,7.8,94.5,1.7,1.7,'wallM',{deep:false}); this.walls.push({x:-2.2,z:94.5,w:1.7,d:1.7,top:7.8});
-    KP(-2.2,8.9,94.5); // chimney
-    const M2=this.plat(0,4.6,101.5,4,3,'plankM',{deep:false}); this.moverP(M2,'y',1.9,.85);
-    this.plat(0,6.9,108.5,7,5.6,'roofM'); KP(0,8,110.5);
-    this.plat(0,6.9,117.5,1.8,13,'plankM',{deep:false});     // narrow plank bridge
-    this.coin(0,7.8,113.5); this.coin(0,7.8,117.5); this.coin(0,7.8,121.5);
-    this.plat(5,4.7,118,4.4,3.6,'roofM'); KP(5,5.8,118); this.pad(5,4.7,120.2);
-    this.plat(0,6.3,126.5,7,5.6,'roofM');
-    this.plat(0,4.3,134.5,8,6,'roofM'); this.pad(-2.5,4.3,134.5);
-    this.plat(-2.5,8.4,141,4.2,3.2,'stoneM',{deep:false}); KP(-2.5,9.5,141.5); // billboard perch
-    this.plat(0,3.5,146.5,10,7,'grassM');
-    this.tent(3.6,3.5,148.5); this.flag(-3.8,3.5,144.5);
-    this.camps.push({x:3.6,z:148.5,y:3.5,id:2,done:false});
-    // drawbridge (Dana lowers it at camp 2)
-    this.bridge=BABYLON.MeshBuilder.CreateBox('br',{width:2.6,height:.4,depth:8.4},this.scene);
-    this.bridge.material=this.plankM; this.bridge.setPivotPoint(V3(0,0,-4.2));
-    this.bridge.position=V3(0,3.35,154.2); this.bridge.rotation.x=-1.35;
-    this.shadow.addShadowCaster(this.bridge);
-    this.bridgeP={x:0,z:154.2,w:2.6,d:8.4,top:3.55,open:false}; // activates when lowered
-    /* ===== ZONE 3 — Sky Court (floating stone) ===== */
-    this.plat(0,3.5,162,6,5,'stoneM',{deep:false});
-    this.pad(0,3.5,163.6);
-    this.plat(0,7.1,170.5,5.4,4.6,'stoneM',{deep:false}); this.coin(0,8.1,170.5);
-    const M3=this.plat(0,7.1,177.5,4,3,'plankM',{deep:false}); this.moverP(M3,'x',4,1.15);
-    KP(0,9.9,181);                                          // mid-air over the gap (double jump off M3)
-    this.plat(0,7.7,185,6,5,'stoneM',{deep:false}); this.flag(2.4,7.7,185);
-    this.camps.push({x:2.4,z:185,y:7.7,id:3,done:false,silent:true});
-    this.plat(-7,8.3,190,4.4,3.6,'stoneM',{deep:false}); KP(-7,9.4,190); // side detour
-    this.plat(0,8.5,196.5,5,4.4,'stoneM',{deep:false}); this.coin(0,9.5,196.5);
-    const M4=this.plat(3,8.5,203,4,3,'plankM',{deep:false}); this.moverP(M4,'y',1.6,.9,1.5);
-    this.plat(0,10.7,211.5,12,9,'grassM',{deep:false});
-    KP(0,11.9,208.5);
-    this.arch(0,10.7,213.5);
-    this.tree(-4.6,10.7,214,1); this.tree(4.6,10.7,214,1);
-    /* scenery: sunk houses + rocks in the flood */
-    for (const [x,z,r] of [[-12,24,.4],[13,38,2.2],[-14,54,1],[12,60,2.8],[-13,86,.7],[12,98,2.4],[-12,120,1.2],[13,132,.2],[-11,168,2],[12,190,1.4]])
-      this.sunkHouse(x,z,r);
-    for (const [x,z] of [[-8,16],[9,28],[-9,44],[8,52],[10,74]]) {
-      const rr=BABYLON.MeshBuilder.CreateSphere('wrk',{diameter:2.4,segments:5},this.scene);
-      rr.position=V3(x,-.4,z); rr.scaling.y=.6; rr.material=this.stoneM; rr.freezeWorldMatrix();
-    }
-    // coin arcs over gaps
-    this.coin(0,1.6,16.5); this.coin(0,2.2,17.8);
-    this.coin(0,5.2,89.5); this.coin(0,6.4,91);
-    this.coin(0,4.9,158); this.coin(0,5.4,160);
-    // agents at camps
-    for (const c of this.camps){ if(!c.silent) this.makeAgent(c.x, c.y, c.z); }
-  },
-
-  /* ---------- characters ---------- */
-  makeHero(){
-    const S=this.scene, root=new BABYLON.TransformNode('hero',S);
-    const skin=this.mat('#f2c9a4'), shirt=this.mat('#3b82f6'), pants=this.mat('#2f3a52'), hairM=this.mat('#4a3220');
-    const mk=(m,parent)=>{ m.parent=parent||root; this.shadow.addShadowCaster(m); return m; };
-    const body=mk(BABYLON.MeshBuilder.CreateCapsule('b',{height:1.05,radius:.34},S)); body.position.y=1.05; body.material=shirt;
-    const head=mk(BABYLON.MeshBuilder.CreateSphere('h',{diameter:.86},S)); head.position.y=1.98; head.material=skin;
-    const hair=mk(BABYLON.MeshBuilder.CreateSphere('hh',{diameter:.9,slice:.52},S)); hair.position.y=2.08; hair.material=hairM;
-    // face
-    for (const sx of [-1,1]){
-      const eye=mk(BABYLON.MeshBuilder.CreateSphere('e',{diameter:.2},S)); eye.position=V3(.17*sx,2.02,.34); eye.material=this.mat('#ffffff',{spec:.4});
-      const pup=mk(BABYLON.MeshBuilder.CreateSphere('pu',{diameter:.1},S)); pup.position=V3(.17*sx,2.02,.425); pup.material=this.mat('#1a1208');
-      if(sx<0){ this.eyeL=eye; this.pupL=pup; } else { this.eyeR=eye; this.pupR=pup; }
-      const brow=mk(BABYLON.MeshBuilder.CreateBox('br',{width:.16,height:.035,depth:.03},S)); brow.position=V3(.17*sx,2.17,.4); brow.material=hairM;
-    }
-    const smile=mk(BABYLON.MeshBuilder.CreateTorus('sm',{diameter:.3,thickness:.045,tessellation:20},S));
-    smile.position=V3(0,1.87,.33); smile.rotation.x=-.5; smile.material=this.mat('#8a3d2e'); smile.scaling.y=.6;
-    const nose=mk(BABYLON.MeshBuilder.CreateSphere('n',{diameter:.11},S)); nose.position=V3(0,1.95,.43); nose.material=this.mat('#e8b48c');
-    // limbs
-    const limb=(w,h,m,x,y)=>{ const p=new BABYLON.TransformNode('lp',S); p.parent=root; p.position=V3(x,y,0);
-      const c=mk(BABYLON.MeshBuilder.CreateCapsule('l',{height:h,radius:w},S),p); c.position.y=-h/2; c.material=m; return p; };
-    this.armL=limb(.11,.62,shirt,-.48,1.5); this.armR=limb(.11,.62,shirt,.48,1.5);
-    this.legL=limb(.13,.6,pants,-.18,.62);  this.legR=limb(.13,.6,pants,.18,.62);
-    // backpack
-    const pack=mk(BABYLON.MeshBuilder.CreateBox('pk',{width:.5,height:.6,depth:.28},S)); pack.position=V3(0,1.25,-.4); pack.material=this.mat('#e0475b');
-    const pk2=mk(BABYLON.MeshBuilder.CreateBox('pk2',{width:.34,height:.22,depth:.1},S)); pk2.position=V3(0,1.05,-.56); pk2.material=this.mat('#ffc95c');
-    this.heroBody=root;
-    return root;
-  },
-  makeAgent(x,y,z){
-    const S=this.scene, root=new BABYLON.TransformNode('agent',S);
-    const gold=this.mat('#f4c33f'), skin=this.mat('#e8b48c'), hairM=this.mat('#3a2c1c');
-    const mk=m=>{ m.parent=root; this.shadow.addShadowCaster(m); return m; };
-    const body=mk(BABYLON.MeshBuilder.CreateCapsule('ab',{height:1.05,radius:.33},S)); body.position.y=1.05; body.material=gold;
-    const head=mk(BABYLON.MeshBuilder.CreateSphere('ah',{diameter:.82},S)); head.position.y=1.95; head.material=skin;
-    const hair=mk(BABYLON.MeshBuilder.CreateSphere('ahh',{diameter:.88,slice:.55},S)); hair.position.y=2.06; hair.material=hairM;
-    const bun=mk(BABYLON.MeshBuilder.CreateSphere('bun',{diameter:.34},S)); bun.position=V3(0,2.22,-.3); bun.material=hairM;
-    for (const sx of [-1,1]){ const e=mk(BABYLON.MeshBuilder.CreateSphere('ae',{diameter:.17},S)); e.position=V3(.16*sx,2,.32); e.material=this.mat('#fff',{spec:.4});
-      const p=mk(BABYLON.MeshBuilder.CreateSphere('ap',{diameter:.09},S)); p.position=V3(.16*sx,2,.4); p.material=this.mat('#1a1208'); }
-    const sm=mk(BABYLON.MeshBuilder.CreateTorus('asm',{diameter:.26,thickness:.04},S)); sm.position=V3(0,1.85,.31); sm.rotation.x=-.5; sm.scaling.y=.6; sm.material=this.mat('#8a3d2e');
-    const armW=new BABYLON.TransformNode('aw',S); armW.parent=root; armW.position=V3(.46,1.5,0);
-    const arm=mk(BABYLON.MeshBuilder.CreateCapsule('aa',{height:.6,radius:.1},S)); arm.parent=armW; arm.position.y=-.3; arm.material=gold;
-    const arm2=mk(BABYLON.MeshBuilder.CreateCapsule('aa2',{height:.6,radius:.1},S)); arm2.position=V3(-.46,1.2,0); arm2.material=gold;
-    for (const sx of [-1,1]){ const l=mk(BABYLON.MeshBuilder.CreateCapsule('al',{height:.6,radius:.12},S)); l.position=V3(.17*sx,.32,0); l.material=this.mat('#2f3a52'); }
-    // umbrella!
-    const stick=mk(BABYLON.MeshBuilder.CreateCylinder('us',{diameter:.06,height:1.5},S)); stick.parent=armW; stick.position=V3(0,-.55,.15); stick.material=this.stoneM;
-    const top=mk(BABYLON.MeshBuilder.CreateSphere('ut',{diameter:1.5,slice:.5},S)); top.parent=armW; top.position=V3(0,.2,.15); top.material=this.mat('#e0475b',{emis:'#40080f'});
-    root.position=V3(x,y,z); root.rotation.y=Math.PI; // face the incoming hero
-    root.waveArm=armW;
-    (this.agents=this.agents||[]).push(root);
-    return root;
-  },
-  makeParticles(){
-    const S=this.scene;
-    const blob=new BABYLON.DynamicTexture('pt',{width:64,height:64},S,false);
-    const g=blob.getContext(); const rg=g.createRadialGradient(32,32,2,32,32,30);
-    rg.addColorStop(0,'rgba(255,255,255,1)'); rg.addColorStop(1,'rgba(255,255,255,0)');
-    g.fillStyle=rg; g.fillRect(0,0,64,64); blob.update(); blob.hasAlpha=true;
-    const mkPS=(cap,c1,c2,size,life,power,grav)=>{ const ps=new BABYLON.ParticleSystem('ps',cap,S);
-      ps.particleTexture=blob; ps.emitter=V3(0,-50,0);
-      ps.color1=BABYLON.Color4.FromHexString(c1); ps.color2=BABYLON.Color4.FromHexString(c2);
-      ps.colorDead=new BABYLON.Color4(1,1,1,0);
-      ps.minSize=size*.6; ps.maxSize=size*1.4; ps.minLifeTime=life*.6; ps.maxLifeTime=life*1.3;
-      ps.emitRate=0; ps.manualEmitCount=0; ps.gravity=V3(0,grav,0);
-      ps.direction1=V3(-1,1.4,-1).scale(power); ps.direction2=V3(1,2.2,1).scale(power);
-      ps.blendMode=BABYLON.ParticleSystem.BLENDMODE_ADD; ps.start(); return ps; };
-    this.dustPS   =mkPS(200,'#e8dcc0ff','#c9b891ff',.5,.5,2.2,-2);
-    this.splashPS =mkPS(300,'#7ec8f7ff','#ffffffff',.6,.7,4,-12);
-    this.sparkPS  =mkPS(300,'#ffd97aff','#fb7185ff',.45,.8,5,-4);
-    this.confetPS =mkPS(600,'#38bdf8ff','#ffc95cff',.4,1.6,7,-6);
-  },
-  emit(ps,pos,n){ ps.emitter=pos.clone(); ps.manualEmitCount=n; },
-
-  /* ---------- flow ---------- */
-  start(){
-    SFX.ac(); SFX.unlock();
-    this.name=(E('clientName').value.trim()||'Hero').slice(0,14);
+  /* ---- flow ---- */
+  start(){ SFX.ac(); SFX.win(); this.name=(E('clientName').value.trim()||'Hero').slice(0,14);
     E('title').classList.add('hidden2');
-    for (const id of ['hudTop','hudObj','kbdhint']) E(id).classList.remove('hidden2');
-    this.started=true; this.t0=performance.now();
-    UI.obj(`🌊 Follow the trail — ${Branding.data.name.split(' ')[0]}'s camps mark the way!`);
-    setTimeout(()=>UI.say(`${this.name}! The flood washed ten keepsakes down the valley — I've set up camps along the whole trail. Grab what you can, and don't worry about the water: you splash, you respawn, we go again. That's basically my whole industry. 🛡️`,8200),700);
+    for(const id of['hudTop','obj','rail','kbd']) E(id).classList.remove('hidden2');
+    this.state='play'; this.t0=now(); UI.hearts(this.hearts,3);
+    UI.obj(`🌪️ Rescue 5 keepsakes &amp; reach ${THEME.villain.name}!`);
+    setTimeout(()=>UI.say(THEME.intro(this.name),7000),600);
   },
-  campReached(c){
-    c.done=true;
-    if (c.id===0) return;
-    this.checkpoint=V3(c.x+1.5,c.y+1,c.z);
-    SFX.check();
-    if (c.id===1){
-      this.canDouble=true; E('djHint').classList.remove('hidden2');
-      UI.banner('⛺ Camp reached','DOUBLE JUMP unlocked!');
-      SFX.unlock();
-      this.emit(this.confetPS,V3(c.x,c.y+2,c.z),120);
-      UI.say(`Take my storm trampoline legs— kidding. But here: <b>jump again in mid-air</b> from now on. The rooftops ahead need it. Checkpoint saved! ⛺`,6500);
-      UI.obj('🏠 Rooftop Rapids — bounce pads are your friends!');
-    } else if (c.id===2){
-      UI.banner('⛺ Camp reached','Checkpoint saved!');
-      UI.say(`Last stretch, ${this.name} — the Sky Court. Hang on, let me get the bridge for you… there. <b>Go finish this.</b> ⛺`,6000);
-      UI.obj('⛅ Sky Court — ride the moving stones to the arch!');
-      this.lowerBridge=true;
-    } else if (c.id===3){
-      UI.banner('🚩 Checkpoint','Saved!');
+  reachCamp(c){ c.done=true;
+    if(c.id===1){ this.checkpoint={x:c.x,y:GY}; this.shield=true; SFX.shield();
+      UI.banner('⛺ Camp reached','Policy Shield up!'); UI.say(THEME.camp1.replace('{n}',this.name),6000);
+      this.agent={x:c.x-46,y:GY,wave:0}; }
+    else if(c.id===2){ this.checkpoint={x:c.x,y:GY}; this.shield=true; SFX.shield();
+      UI.banner('⛺ Camp reached','Raft-bridge deployed!'); UI.say(THEME.camp2(this.name),6200);
+      this.agent={x:c.x-46,y:GY,wave:0};
+      for(const p of LEVEL.plats) if(p.bridge){ p.shown=true; } // reveal bridge
     }
+    else if(c.id===3){ this.checkpoint={x:c.x,y:GY}; this.agent={x:4900,y:GY-150,wave:0};
+      this.startBoss(); }
   },
-  pickupKeep(k){
-    k.got=true; this.keeps++; UI.keep(this.keeps);
-    k.root.setEnabled(false);
-    SFX.keep();
-    UI.banner('Recovered!', k.label.charAt(0).toUpperCase()+k.label.slice(1));
-    UI.say(k.line,5600);
-    this.emit(this.sparkPS,V3(k.x,k.y,k.z),50);
-    if (this.keeps===10) UI.obj('✨ All 10 recovered — race to the golden arch!');
+  startBoss(){ this.state='boss'; UI.obj(`⚔️ Defeat ${THEME.villain.name}! Grab ${AG.name.split(' ')[0]}'s Policy Stars &amp; jump into him!`);
+    E('bossHP').classList.add('on'); E('rail').classList.add('hidden2');
+    this.boss={ x:LEVEL.bossX, y:GY-190, hp:3, max:3, bob:0, dir:-1, atk:1.4, state:'idle', flash:0, hurt:0 };
+    this.starTimer=1.2; UI.bossHP(1); SFX.thunder(); UI.flash(.5);
+    UI.banner('⚡ BOSS','THE EYE OF THE STORM');
+    setTimeout(()=>UI.say(THEME.bossIntro(this.name),6500),700);
   },
-  finish(){
-    if (this.over) return; this.over=true;
-    SFX.win();
-    this.emit(this.confetPS,this.pos.add(V3(0,3,2)),400);
-    const secs=Math.round((performance.now()-this.t0)/1000);
-    E('endKeep').textContent=this.keeps+'/10';
-    E('endCoin').textContent=this.coins;
+  hurtHero(kx){ if(this.iframe>0||this.dead>0)return;
+    if(this.shield){ this.shield=false; this.iframe=1; SFX.shield(); UI.banner('','Shield saved you!'); this.pop(this.hero.x,this.hero.y-30,'#38bdf8',14); this.shake=8; return; }
+    if(this.empowered>0){ this.empowered=0; } // lose empower instead of a heart if empowered
+    this.hearts--; UI.hearts(this.hearts,3); SFX.hurt(); this.iframe=1.3; this.shake=12;
+    this.hero.vx=(kx||-1)*220; this.hero.vy=-380; this.pop(this.hero.x,this.hero.y-30,'#fb7185',16);
+    if(this.hearts<=0) this.die();
+  },
+  die(){ this.dead=.7; SFX.hurt(); UI.fade(true); },
+  respawn(){ const c=this.checkpoint; this.hero.x=c.x; this.hero.y=c.y-60; this.hero.vx=0; this.hero.vy=0;
+    this.hearts=3; UI.hearts(3,3); this.iframe=1.2; UI.fade(false);
+    if(this.state==='bossdead'){} },
+  win(){ if(this.won)return; this.won=true; this.state='win'; SFX.win(); UI.flash(.9);
+    this.pop(this.hero.x,this.hero.y-40,'#ffc95c',60);
+    const secs=Math.round((now()-this.t0)/1000);
+    E('endKeep').textContent=this.keeps+'/5'; E('endCoin').textContent=this.coins;
     E('endTime').textContent=`${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}`;
-    E('endTitle').textContent=`${this.name}, you made it through the storm.`;
-    E('endSub').textContent=this.keeps===10?'Every keepsake home. Maplewood Valley, whole again.':`${this.keeps} of 10 keepsakes home — the trail's still open if you want the rest!`;
-    setTimeout(()=>E('end').classList.remove('hidden2'),1200);
+    E('endTitle').textContent=`${this.name}, you beat ${THEME.villain.name}!`;
+    E('endSub').textContent = this.keeps===5 ? "Every keepsake home. The sun's back out." : `${this.keeps} of 5 keepsakes saved — and the town's safe.`;
+    UI.banner('🌤️ Town saved!', `${THEME.villain.name} is finished!`);
+    setTimeout(()=>{ E('bossHP').classList.remove('on'); E('end').classList.remove('hidden2'); },1600);
   },
-  share(){
-    const url=location.href.split('#')[0];
-    const text=`I ran the Storm Trail in COVERED 🛡️ — ${this.keeps}/10 keepsakes recovered! A 3D adventure from ${Branding.data.name} at ${Branding.data.firm}. Can you find all ten?`;
-    if (navigator.share) navigator.share({title:'COVERED: Storm Trail',text,url}).catch(()=>{});
-    else navigator.clipboard?.writeText(text+' '+url);
-  },
-  respawn(){
-    if (this.dead) return;
-    this.dead=.34;
-    SFX.splash();
-    this.emit(this.splashPS,this.pos.clone(),80);
-    UI.fade(true);
+  share(){ const url=location.href.split('#')[0];
+    const text=`I beat ${THEME.villain.name} and saved the town in COVERED: Run for Cover 🛡️ — a game from ${AG.name} at ${AG.firm}. ${this.keeps}/5 keepsakes, ${this.coins} coins. Can you beat me?`;
+    if(navigator.share) navigator.share({title:'COVERED: Run for Cover',text,url}).catch(()=>{});
+    else navigator.clipboard?.writeText(text+' '+url); },
+
+  pop(x,y,color,n){ for(let i=0;i<n;i++){ const a=rand(0,7), sp=rand(60,320);
+    this.particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-120,g:900,life:1,dec:rand(1.3,2.4),
+      r:rand(2.5,5),color:Array.isArray(color)?color[i%color.length]:color}); } },
+
+  /* ---- collision helpers ---- */
+  supportSolids(){ // active solids (bridge tiles only if shown, movers included dynamically)
+    const arr=[]; for(const s of LEVEL.solid){ if(s.ref&&s.ref.bridge&&!s.ref.shown) continue; arr.push(s); }
+    for(const m of LEVEL.movers) arr.push({x0:m.x-m.w/2,x1:m.x+m.w/2,y0:m.y,y1:m.y+16,oneway:true,mover:m});
+    return arr;
   },
 
-  /* ---------- physics ---------- */
-  support(px,pz,refY){
-    let best=null, bt=-1e9;
-    const chk=(P)=>{ if (px>P.x-P.w/2-.12 && px<P.x+P.w/2+.12 && pz>P.z-P.d/2-.12 && pz<P.z+P.d/2+.12
-      && P.top<=refY+.55 && P.top>bt){ bt=P.top; best=P; } };
-    for (const P of this.platforms) chk(P);
-    if (this.bridgeP.open) chk(this.bridgeP);
-    return best;
-  },
-  tick(dt){
-    const t=performance.now()/1000;
-    // ambient anims (always)
-    for (const c of this.clouds) c.position.x+=dt*.55;
-    if (this.clouds[0] && this.clouds[0].position.x>160) for (const c of this.clouds) if (c.position.x>160) c.position.x=-160;
-    this.waterT.uOffset+=dt*.012; this.waterT.vOffset+=dt*.008;
-    for (const f of (this.flags||[])) f.rotation.y=Math.sin(t*3+f.position.z)*.25;
-    for (const a of (this.agents||[])) a.waveArm.rotation.z=2.6+Math.sin(t*2.6)*.5;
-    for (const p of this.pads){ p.ring.position.y=p.top+.06+Math.abs(Math.sin(t*2.4+p.t))*.16; }
-    if (this.archStar) this.archStar.rotation.y+=dt*1.4;
+  /* ==================== UPDATE ==================== */
+  update(dt){
+    const t=now()/1000;
+    // ambient
+    for(const c of this.clouds){ c.x-=c.v*dt; if(c.x<this.cam.x-260) c.x=this.cam.x+this.viewW+rand(60,300); }
+    this.weather=lerp(this.weather, this.act>=2?1:0, dt*1.5);
+    if(this.act>=2 && Math.random()<dt*0.25){ this.lightning=1; SFX.thunder(); }
+    this.lightning=Math.max(0,this.lightning-dt*3);
     // movers
-    for (const P of this.movers){
-      const v=Math.sin(t*P.speed+ (P.phase||0))*P.amp;
-      const nx=P.axis==='x'?P.base.x+v:P.base.x, nt=P.axis==='y'?P.base.top+v:P.base.top, nz=P.axis==='z'?P.base.z+v:P.base.z;
-      P.dx=nx-P.x; P.dy=nt-P.top; P.dz=nz-P.z;
-      P.x=nx; P.top=nt; P.z=nz;
-      P.mesh.position.x=nx; P.mesh.position.z=nz; P.mesh.position.y=nt-P.mesh.getBoundingInfo().boundingBox.extendSize.y;
-    }
-    // drawbridge
-    if (this.lowerBridge && this.bridge.rotation.x<0){
-      this.bridge.rotation.x=Math.min(0,this.bridge.rotation.x+dt*1.1);
-      if (this.bridge.rotation.x>=0) this.bridgeP.open=true;
-    }
-    if (!this.started||this.over){ this.render(t,dt); return; }
-    if (this.dead){
-      this.dead-=dt;
-      if (this.dead<=0){ this.dead=0;
-        this.pos.copyFrom(this.checkpoint); this.vy=0; this.grounded=false; this.velX=this.velZ=0;
-        UI.fade(false); }
-      this.render(t,dt); return;
-    }
+    for(const m of LEVEL.movers){ m._px=m.x; m.x = (m.x0+m.x1)/2 + Math.sin(t*m.speed+m.phase)*m.amp; m.dx=m.x-(m._px??m.x); }
+    if(this.shake>0) this.shake=Math.max(0,this.shake-dt*40);
+    if(this.state==='title'){ return; }
+    if(this.dead>0){ this.dead-=dt; if(this.dead<=0) this.respawn(); this.updateParticles(dt); return; }
+    if(this.iframe>0) this.iframe-=dt;
+    if(this.empowered>0) this.empowered-=dt;
 
-    /* --- hero movement --- */
-    const mv=Input.move();
-    const speed=7.2;
-    if (Input.takeJump()) this.jbuf=.16;
-    this.jbuf-=dt; this.coyote-=dt;
-    // carried by mover
-    if (this.grounded && this.groundPlat && this.groundPlat.dx!==undefined){
-      this.pos.x+=this.groundPlat.dx||0; this.pos.z+=this.groundPlat.dz||0; this.pos.y+=this.groundPlat.dy||0;
-    }
-    // horizontal (snappy accel toward target vel)
-    this.velX=lerp(this.velX||0, mv.x*speed*mv.m, Math.min(1,dt*14));
-    this.velZ=lerp(this.velZ||0, mv.z*speed*mv.m, Math.min(1,dt*14));
-    const prevX=this.pos.x, prevZ=this.pos.z;
-    this.pos.x+=this.velX*dt; this.pos.z+=this.velZ*dt;
-    // walls (rocks/trees)
-    for (const w of this.walls){
-      if (this.pos.y<w.top && this.pos.x>w.x-w.w/2-.4 && this.pos.x<w.x+w.w/2+.4 && this.pos.z>w.z-w.d/2-.4 && this.pos.z<w.z+w.d/2+.4){
-        this.pos.x=prevX; this.pos.z=prevZ;
-      }
-    }
-    if (Math.hypot(this.velX,this.velZ)>.6) this.heading=Math.atan2(this.velX,this.velZ);
-    // vertical
-    const sup=this.support(this.pos.x,this.pos.z,this.grounded?this.pos.y:Math.max(this.pos.y,this.prevY||this.pos.y));
-    if (this.grounded){
-      if (!sup || sup.top < this.pos.y-.6){ this.grounded=false; this.coyote=.12; this.vy=0; }
-      else { this.pos.y=sup.top; this.groundPlat=sup; }
-    }
-    const wantJump=this.jbuf>0;
-    if (wantJump && (this.grounded||this.coyote>0)){
-      this.jbuf=0; this.grounded=false; this.coyote=0; this.vy=10.6; this.usedDouble=false; this.canCut=true;
-      SFX.jump(); this.squash=1.28; this.emit(this.dustPS,this.pos.clone(),8);
-    } else if (wantJump && !this.grounded && this.canDouble && !this.usedDouble){
-      this.jbuf=0; this.usedDouble=true; this.vy=9.6; this.canCut=true;
-      SFX.djump(); this.squash=1.3; this.emit(this.sparkPS,this.pos.add(V3(0,.6,0)),14);
-    }
-    if (!this.grounded){
-      this.prevY=this.pos.y;
-      if (this.canCut && this.vy>4.5 && !Input.holdingJump()) this.vy=4.5; // variable jump height (jumps only, not pads)
-      this.vy-=26*dt; this.pos.y+=this.vy*dt;
-      const s2=this.support(this.pos.x,this.pos.z,this.prevY);
-      if (this.vy<=0 && s2 && this.pos.y<=s2.top){
-        this.pos.y=s2.top; this.vy=0; this.grounded=true; this.groundPlat=s2; this.usedDouble=false;
-        SFX.land(); this.squash=.72; this.emit(this.dustPS,this.pos.clone(),10);
-      }
-    } else this.prevY=this.pos.y;
-    // bounce pads
-    for (const p of this.pads){
-      if (Math.hypot(this.pos.x-p.x,this.pos.z-p.z)<1.15 && Math.abs(this.pos.y-p.top)<.6 && this.vy<=.1){
-        this.vy=15.5; this.grounded=false; this.usedDouble=false; this.canCut=false; SFX.bounce();
-        this.squash=1.45; this.emit(this.dustPS,V3(p.x,p.top,p.z),16);
-        p.ring.scaling.setAll(1.5);
-      }
-    }
-    // water
-    if (this.pos.y<-.3) this.respawn();
-    // run dust
-    this.dustT=(this.dustT||0)-dt;
-    if (this.grounded && Math.hypot(this.velX,this.velZ)>4 && this.dustT<=0){
-      this.dustT=.18; this.emit(this.dustPS,this.pos.clone(),3);
-    }
-    /* --- pickups & triggers --- */
-    for (const c of this.coinsL){ if (c.got) continue;
-      c.mesh.rotation.y=t*3+c.ph;
-      if (Math.hypot(this.pos.x-c.x,this.pos.z-c.z)<1 && Math.abs(this.pos.y+.8-c.y)<1.4){
-        c.got=true; c.mesh.setEnabled(false); this.coins++; UI.coin(this.coins); SFX.coin();
-        this.emit(this.sparkPS,V3(c.x,c.y,c.z),8);
+    const h=this.hero;
+    // determine act by position
+    this.act = h.x>3540?2 : h.x>1780?1 : 0;
+
+    /* --- horizontal input --- */
+    const acc = h.grounded?2600:2000, maxv=352, fric=2600;
+    let ix=(Input.right?1:0)-(Input.left?1:0);
+    if(ix!==0){ h.vx += ix*acc*dt; h.face=ix; }
+    else { const s=Math.sign(h.vx); h.vx-=s*fric*dt; if(Math.sign(h.vx)!==s) h.vx=0; }
+    h.vx=clamp(h.vx,-maxv,maxv);
+
+    /* --- jump (buffer + coyote + variable) --- */
+    if(Input.takeJump()) h.buffer=.12;
+    h.buffer-=dt; h.coyote-=dt;
+    if(h.buffer>0 && (h.grounded||h.coyote>0)){ h.vy=-1010; h.grounded=false; h.coyote=0; h.buffer=0; h.jumpCut=false;
+      h.squash=1.3; SFX.jump(); this.pop(h.x,h.y,'#e8dcc0',6); }
+    if(!h.grounded && !Input.jumpHeld && h.vy<-320 && !h.jumpCut){ h.vy=-320; h.jumpCut=true; }
+
+    /* --- integrate + collide --- */
+    const solids=this.supportSolids();
+    h.prevBottom=h.y;
+    // X
+    h.x+=h.vx*dt;
+    const hw=h.w/2;
+    for(const s of solids){ if(s.oneway)continue;
+      if(h.x+hw>s.x0 && h.x-hw<s.x1 && h.y-2>s.y0 && h.y-h.h+2<s.y1){
+        if(h.vx>0) h.x=s.x0-hw; else if(h.vx<0) h.x=s.x1+hw; h.vx=0;
       } }
-    for (const k of this.keepsL){ if (k.got) continue;
-      k.root.rotation.y=t*1.5+k.ph; k.root.position.y=k.y+Math.sin(t*2+k.ph)*.2;
-      if (Math.hypot(this.pos.x-k.x,this.pos.z-k.z)<1.5 && Math.abs(this.pos.y+1-k.y)<2.1) this.pickupKeep(k);
+    h.x=clamp(h.x,-160,LEVEL.length-20);
+    // Y
+    h.vy=clamp(h.vy+2600*dt, -2000, 1350);
+    h.y+=h.vy*dt;
+    let onGround=false, ridingMover=null;
+    for(const s of solids){
+      const overX = h.x+hw>s.x0+2 && h.x-hw<s.x1-2;
+      if(!overX) continue;
+      if(s.oneway){
+        if(h.vy>=0 && h.prevBottom<=s.y0+2 && h.y>=s.y0 && h.y<=s.y0+34){ h.y=s.y0; h.vy=0; onGround=true; if(s.mover) ridingMover=s.mover; }
+      } else {
+        if(h.vy>=0 && h.prevBottom<=s.y0+2 && h.y>=s.y0 && h.y-h.h<s.y1){ h.y=s.y0; h.vy=0; onGround=true; }
+        else if(h.vy<0 && h.y-h.h<=s.y1 && h.prevBottom-h.h>=s.y1-2){ h.y=s.y1+h.h; h.vy=40; } // head bonk
+      }
     }
-    for (const c of this.camps){ if (c.done) continue;
-      if (Math.hypot(this.pos.x-c.x,this.pos.z-c.z)<4.6 && Math.abs(this.pos.y-c.y)<2.5) this.campReached(c);
-    }
-    if (this.pos.z>212 && Math.abs(this.pos.x)<5 && this.pos.y>9.5) this.finish();
-    // compass
-    let best=null,bd=1e9;
-    for (const k of this.keepsL){ if(k.got)continue; const d=Math.hypot(k.x-this.pos.x,k.z-this.pos.z); if(d<bd){bd=d;best=k;} }
-    if (best) UI.compass(Math.atan2(best.x-this.pos.x,best.z-this.pos.z),bd);
-    this.render(t,dt);
+    if(onGround){ if(!h.grounded){ h.squash=.7; SFX.land(); this.pop(h.x,h.y,'#e8dcc0',5); } h.grounded=true; h.coyote=.1; }
+    else { if(h.grounded) h.coyote=.1; h.grounded=false; }
+    if(ridingMover) h.x+=ridingMover.dx;
+    // fell in flood?
+    if(h.y>GY+150){ SFX.hurt(); this.pop(h.x,GY+10,['#7ec8f7','#fff'],20); this.hearts--; UI.hearts(this.hearts,3);
+      if(this.hearts<=0) this.die(); else { h.x=this.checkpoint.x; h.y=this.checkpoint.y-60; h.vx=0; h.vy=0; this.iframe=1.2; UI.flash(.3); } }
+
+    // anim
+    h.squash=lerp(h.squash,1,dt*9);
+    if(h.grounded && Math.abs(h.vx)>30) h.phase+=dt*(6+Math.abs(h.vx)*.02); else if(!h.grounded){} else h.phase=lerp(h.phase,0,dt*8);
+    h.blink-=dt; if(h.blink<0) h.blink=rand(2,4.5);
+
+    /* --- coins --- */
+    for(const c of LEVEL.coins){ if(c.got)continue; if(Math.abs(c.x-h.x)<26 && Math.abs(c.y-(h.y-h.h/2))<38){
+      c.got=true; this.coins++; UI.coin(this.coins); SFX.coin(); this.pop(c.x,c.y,'#ffe08a',5); } }
+    /* --- keepsakes --- */
+    for(const k of LEVEL.keeps){ if(k.got)continue; if(Math.abs(k.x-h.x)<34 && Math.abs(k.y-(h.y-h.h/2))<46){
+      k.got=true; this.keeps++; UI.keep(this.keeps); SFX.keep(); this.pop(k.x,k.y,['#ffc95c','#fff','#38bdf8'],26);
+      UI.banner('Rescued!', THEME.keepLines[k.idx].split('—')[0].split('!')[0].trim());
+      UI.say(THEME.keepLines[k.idx],5200);
+      if(this.keeps<5) UI.obj(`💎 ${5-this.keeps} ${THEME.keepNoun}${5-this.keeps>1?'s':''} left — keep going!`); } }
+    /* --- enemies --- */
+    for(const e of LEVEL.enemies){ if(!e.alive){ e.squash=Math.max(0,e.squash-dt*3); continue; }
+      e.x+=e.dir*74*dt; if(e.x<e.x0){e.x=e.x0;e.dir=1;} if(e.x>e.x1){e.x=e.x1;e.dir=-1;} e.ph+=dt*7;
+      // collision
+      if(Math.abs(e.x-h.x)<28 && h.y>e.y-40 && h.y-h.h<e.y){
+        if(h.vy>0 && h.prevBottom<=e.y-18){ e.alive=false; e.squash=1; h.vy=-560; h.jumpCut=true; SFX.stomp();
+          this.pop(e.x,e.y-16,'#8899bb',12); this.coins+=2; UI.coin(this.coins); }
+        else this.hurtHero(h.x<e.x?-1:1);
+      } }
+    /* --- fire hazards --- */
+    for(const f of LEVEL.fires){ f.ph+=dt*10;
+      if(h.grounded && h.x>f.x-2 && h.x<f.x+f.w+2 && Math.abs(h.y-GY)<8) this.hurtHero(0); }
+    /* --- hail --- */
+    for(const z of LEVEL.hailZones){ if(h.x>z.x0-100 && h.x<z.x1+100 && Math.random()<dt*5){
+      this.hail.push({x:rand(z.x0,z.x1),y:this.cam.y-20,vy:rand(360,520)}); } }
+    for(let i=this.hail.length-1;i>=0;i--){ const p=this.hail[i]; p.y+=p.vy*dt;
+      if(Math.abs(p.x-h.x)<20 && Math.abs(p.y-(h.y-h.h/2))<32){ this.hurtHero(0); this.hail.splice(i,1); continue; }
+      if(p.y>GY+40){ this.pop(p.x,GY,'#bfe4fb',3); this.hail.splice(i,1); } }
+    /* --- camps --- */
+    for(const c of LEVEL.camps){ if(c.done)continue; if(Math.abs(c.x-h.x)<40) this.reachCamp(c); }
+
+    // agent wave
+    this.agent.wave = Math.sin(t*3);
+
+    if(this.state==='boss') this.updateBoss(dt,t);
+    this.updateParticles(dt);
+    this.updateCamera(dt);
+    // rail progress
+    UI.rail(clamp(h.x/LEVEL.bossX,0,1));
   },
-  render(t,dt){
-    // hero visuals
-    this.squash=lerp(this.squash,1,Math.min(1,dt*9));
-    const run=Math.hypot(this.velX||0,this.velZ||0);
-    this.animT+=dt*(2+run*1.6);
-    const h=this.heroBody;
-    h.position.copyFrom(this.pos);
-    h.rotation.y=lerp(h.rotation.y,this.heading, Math.min(1,dt*12)) ;
-    // handle angle wrap
-    if (Math.abs(h.rotation.y-this.heading)>Math.PI) h.rotation.y=this.heading;
-    h.scaling=V3(2-this.squash,this.squash,2-this.squash).scale(.5).add(V3(.5,.5,.5)); // gentle squash around 1
-    const sw=this.grounded? Math.sin(this.animT*6)*Math.min(1,run/6): 0;
-    this.armL.rotation.x=this.grounded? sw*1 : -2.4;
-    this.armR.rotation.x=this.grounded? -sw*1 : -2.4;
-    this.legL.rotation.x=this.grounded? -sw*1.1 : .7;
-    this.legR.rotation.x=this.grounded? sw*1.1 : -.4;
-    if (this.grounded && run<.5){ // idle bob
-      const b=Math.sin(t*2.2)*.02; h.scaling.y*=1+b;
+
+  updateBoss(dt,t){
+    const b=this.boss, h=this.hero; if(!b)return;
+    b.bob=Math.sin(t*2)*22; b.x += b.dir*40*dt; if(b.x<4980){b.x=4980;b.dir=1;} if(b.x>5240){b.x=5240;b.dir=-1;}
+    if(b.flash>0) b.flash-=dt; if(b.hurt>0) b.hurt-=dt;
+    // agent tosses policy stars
+    this.starTimer-=dt;
+    if(this.starTimer<=0 && this.stars.length===0 && this.empowered<=0 && b.hp>0){ this.starTimer=4.5;
+      this.stars.push({x:this.agent.x+30,y:this.agent.y-160,vx:180,vy:-260,landed:false,life:6,ph:0}); SFX.star();
+      UI.say(`Star incoming, ${this.name} — grab it and JUMP him!`,3200); }
+    for(let i=this.stars.length-1;i>=0;i--){ const s=this.stars[i]; s.ph+=dt*6;
+      if(!s.landed){ s.x+=s.vx*dt; s.vy+=1400*dt; s.y+=s.vy*dt; if(s.y>=GY-40){ s.y=GY-40; s.landed=true; } }
+      else s.life-=dt;
+      if(Math.abs(s.x-h.x)<34 && Math.abs(s.y-(h.y-h.h/2))<46){ this.empowered=6; this.stars.splice(i,1); SFX.star();
+        UI.banner('','⭐ Empowered! Jump into HAVOC!'); continue; }
+      if(s.life<=0) this.stars.splice(i,1);
     }
-    // blink
-    this.blinkT-=dt;
-    if (this.blinkT<=0){ this.blinkT=2.4+Math.random()*2;
-      for (const e of [this.eyeL,this.eyeR,this.pupL,this.pupR]) e.scaling.y=.08;
-      setTimeout(()=>{ for (const e of [this.eyeL,this.eyeR,this.pupL,this.pupR]) e.scaling.y=1; },110);
+    // boss lobs hail at hero
+    b.atk-=dt; if(b.atk<=0 && b.hp>0){ b.atk=rand(1.1,1.8);
+      const dx=h.x-b.x; this.hail.push({x:b.x,y:b.y+20,vy:0,vx:clamp(dx*.7,-260,260),grav:true,fromBoss:true});
     }
-    // pads spring back
-    for (const p of this.pads) p.ring.scaling.set(lerp(p.ring.scaling.x,1,dt*6),lerp(p.ring.scaling.y,1,dt*6),lerp(p.ring.scaling.z,1,dt*6));
-    // camera: fixed chase
-    const target=this.pos;
-    const cx=target.x*.55, cy=target.y+5.6, cz=target.z-8.6;
-    this.cam.position.x=lerp(this.cam.position.x,cx,Math.min(1,dt*6));
-    this.cam.position.y=lerp(this.cam.position.y,cy,Math.min(1,dt*5));
-    this.cam.position.z=lerp(this.cam.position.z,cz,Math.min(1,dt*6));
-    this.cam.setTarget(V3(target.x*.75,target.y+1.3,target.z+3));
+    // boss-hail projectiles with gravity
+    for(let i=this.hail.length-1;i>=0;i--){ const p=this.hail[i]; if(p.grav){ p.vy+=1000*dt; p.x+=(p.vx||0)*dt; p.y+=p.vy*dt;
+      if(Math.abs(p.x-h.x)<22 && Math.abs(p.y-(h.y-h.h/2))<32){ this.hurtHero(h.x<p.x?-1:1); this.hail.splice(i,1); continue; }
+      if(p.y>GY+30){ this.pop(p.x,GY,'#bfe4fb',3); this.hail.splice(i,1); } } }
+    // hero hits boss while empowered
+    if(this.empowered>0 && b.hurt<=0 && b.hp>0){
+      if(Math.abs(h.x-b.x)<64 && Math.abs((h.y-h.h/2)-(b.y+b.bob))<80){
+        b.hp--; b.hurt=1; b.flash=.4; this.empowered=0; h.vy=-560; h.jumpCut=true;
+        SFX.bosshit(); this.shake=16; UI.flash(.5); this.pop(b.x,b.y+b.bob,['#fb7185','#ffc95c','#fff'],30);
+        UI.bossHP(b.hp/b.max);
+        if(b.hp>0) UI.say(THEME.bossHit[Math.min(2,2-b.hp)]||'Great hit!',3000);
+        if(b.hp<=0){ this.state='bossdead'; UI.say(THEME.bossWin(this.name),5000); this.boss.dead=1;
+          setTimeout(()=>this.win(),1400); }
+      }
+    }
+    this.updateCamera(dt,true);
   },
+
+  updateParticles(dt){ for(let i=this.particles.length-1;i>=0;i--){ const p=this.particles[i];
+    p.vy+=p.g*dt; p.x+=p.vx*dt; p.y+=p.vy*dt; p.life-=p.dec*dt; if(p.life<=0) this.particles.splice(i,1); } },
+
+  updateCamera(dt,boss){ const h=this.hero;
+    let tx = boss ? (LEVEL.bossX-140) : clamp(h.x - this.viewW*0.40, 0, LEVEL.length - this.viewW);
+    tx=clamp(tx,0,LEVEL.length-this.viewW);
+    const constY = GY - this.viewH*0.72;
+    let ty = Math.min(constY, (h.y - this.viewH*0.5));
+    this.cam.x=lerp(this.cam.x,tx,Math.min(1,dt*(boss?4:8)));
+    this.cam.y=lerp(this.cam.y,ty,Math.min(1,dt*6));
+  },
+
+  /* ==================== RENDER ==================== */
+  frame(){ const t=now(); let dt=(t-this.last)/1000; this.last=t; dt=Math.min(dt,.05);
+    if(this.state!=='title'||true){} // always animate
+    if(this.state==='title'){ this.titleCam(dt); }
+    else this.update(dt);
+    this.render();
+    requestAnimationFrame(this.frame.bind(this));
+  },
+  titleCam(dt){ // gentle drift on title
+    this.cam.x=(this.cam.x+dt*20)%(LEVEL.length-this.viewW); this.cam.y=GY-this.viewH*0.72;
+    this.updateParticles(dt);
+    for(const c of this.clouds){ c.x-=c.v*dt; if(c.x<this.cam.x-260) c.x=this.cam.x+this.viewW+rand(60,300); }
+  },
+
+  render(){
+    const ctx=this.ctx, dpr=this.dpr, sc=this.sc, cam=this.cam;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.clearRect(0,0,this.cw,this.ch);
+    // ---- sky (screen space) ----
+    const a=clamp(this.act,0,2), sk0=THEME.skies[Math.floor(a)], sk1=THEME.skies[Math.min(2,Math.ceil(a))], f=a-Math.floor(a);
+    const mix=(i)=>this.mixHex(sk0[i],sk1[i],f);
+    const sg=ctx.createLinearGradient(0,0,0,this.ch); sg.addColorStop(0,mix(0)); sg.addColorStop(.55,mix(1)); sg.addColorStop(1,mix(2));
+    ctx.fillStyle=sg; ctx.fillRect(0,0,this.cw,this.ch);
+    // sun glow (fades in storm)
+    const sunA=1-this.weather*.8; if(sunA>0){ const sx=this.cw*.8, sy=this.ch*.22;
+      const rg=ctx.createRadialGradient(sx,sy,0,sx,sy,180); rg.addColorStop(0,`rgba(255,246,214,${.9*sunA})`); rg.addColorStop(1,'rgba(255,246,214,0)');
+      ctx.fillStyle=rg; ctx.fillRect(sx-200,sy-200,400,400); ctx.fillStyle=`rgba(255,250,230,${sunA})`; ctx.beginPath(); ctx.arc(sx,sy,42,0,7); ctx.fill(); }
+    const groundScreenY=(GY-cam.y)*sc;
+    // ---- parallax layers ----
+    this.blit(this.hills,0.30,groundScreenY+30,1);
+    this.blit(this.town, 0.50,groundScreenY+12,1-this.weather*.15);
+    // clouds (parallax 0.4)
+    ctx.globalAlpha=.95; for(const c of this.clouds){ const sx=(c.x-cam.x*0.6); const px=sx*sc, py=(c.y-cam.y*0.25)*sc;
+      if(px>-260&&px<this.cw+120) ctx.drawImage(this.cloud,px,py,this.cloud.width*sc*c.s,this.cloud.height*sc*c.s); }
+    ctx.globalAlpha=1;
+    this.blit(this.trees,0.78,groundScreenY+8,1);
+
+    // ---- world space ----
+    ctx.setTransform(sc*dpr,0,0,sc*dpr,-cam.x*sc*dpr,-cam.y*sc*dpr);
+    this.drawWater(ctx);
+    this.drawGround(ctx);
+    this.drawFires(ctx);
+    this.drawCoins(ctx);
+    this.drawKeeps(ctx);
+    this.drawEnemies(ctx);
+    if(this.state==='boss'||this.state==='bossdead') this.drawBoss(ctx);
+    this.drawStars(ctx);
+    this.drawAgent(ctx);
+    this.drawHail(ctx);
+    this.drawHero(ctx);
+    this.drawParticles(ctx);
+
+    // ---- foreground weather / grade (screen space) ----
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    if(this.weather>.02){ ctx.globalAlpha=this.weather*.5; ctx.strokeStyle='rgba(200,220,240,.5)'; ctx.lineWidth=1.4;
+      const off=(now()/40)%40; for(let x=-40;x<this.cw+40;x+=26){ const rx=x+off; ctx.beginPath(); ctx.moveTo(rx,-20+((rx*7)%40)); ctx.lineTo(rx-14,-20+((rx*7)%40)+46); ctx.stroke(); } ctx.globalAlpha=1; }
+    if(this.lightning>0){ ctx.fillStyle=`rgba(255,255,255,${this.lightning*.5})`; ctx.fillRect(0,0,this.cw,this.ch); }
+    // vignette
+    const vg=ctx.createRadialGradient(this.cw/2,this.ch*.45,this.ch*.3,this.cw/2,this.ch*.5,this.ch*.85);
+    vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(6,10,22,.34)'); ctx.fillStyle=vg; ctx.fillRect(0,0,this.cw,this.ch);
+  },
+
+  blit(layer,factor,bottomY,alpha){ const ctx=this.ctx, sc=this.sc, lw=layer.width*sc, lh=layer.height*sc;
+    let ox=-(this.cam.x*factor*sc)%lw; if(ox>0) ox-=lw; ctx.globalAlpha=alpha??1;
+    for(let x=ox;x<this.cw+lw;x+=lw) ctx.drawImage(layer,x,bottomY-lh,lw,lh); ctx.globalAlpha=1; },
+
+  drawWater(ctx){ // full band behind ground; shows through pit gaps
+    const y=GY+6, h=520, t=now()/1000;
+    const g=ctx.createLinearGradient(0,y,0,y+h); g.addColorStop(0,'#3f9ad0'); g.addColorStop(1,'#2b6ea0');
+    ctx.fillStyle=g; ctx.fillRect(cam0(this),y,this.viewW+40,h);
+    ctx.strokeStyle='rgba(255,255,255,.22)'; ctx.lineWidth=2;
+    for(let k=0;k<3;k++){ ctx.beginPath(); const yy=y+14+k*18;
+      for(let x=this.cam.x-20;x<this.cam.x+this.viewW+20;x+=24) ctx.lineTo(x,yy+Math.sin(x*.05+t*2+k)*3); ctx.stroke(); }
+  },
+  drawGround(ctx){
+    for(const [x0,x1] of LEVEL.groundSpans){ if(x1<this.cam.x-40||x0>this.cam.x+this.viewW+40) continue;
+      const w=x1-x0;
+      // dirt body
+      ctx.fillStyle=this.dirtPat; ctx.save(); ctx.translate(0,0); ctx.fillRect(x0,GY+14,w,520); ctx.restore();
+      // dirt shading
+      ctx.fillStyle='rgba(0,0,0,.12)'; ctx.fillRect(x0,GY+14,w,520);
+      // grass cap
+      ctx.fillStyle=this.grassPat; ctx.fillRect(x0,GY,w,20);
+      ctx.fillStyle='#6fbe57'; ctx.fillRect(x0,GY,w,6);
+      ctx.fillStyle='rgba(255,255,255,.12)'; ctx.fillRect(x0,GY,w,2);
+      // grass blade fringe
+      ctx.fillStyle='#4f9a3c'; for(let x=x0;x<x1;x+=14){ ctx.beginPath(); ctx.moveTo(x,GY+20); ctx.lineTo(x+7,GY+20); ctx.lineTo(x+3.5,GY+27); ctx.fill(); }
+      // decorations that sit on this span
+    }
+    // deco (houses, trees) anchored to ground
+    for(const d of LEVEL.deco){ if(d.x<this.cam.x-160||d.x>this.cam.x+this.viewW+160) continue; this.drawDeco(ctx,d); }
+    // platforms
+    for(const p of LEVEL.plats){ if(p.bridge&&!p.shown) continue; if(p.x1<this.cam.x-40||p.x0>this.cam.x+this.viewW+40) continue;
+      const w=p.x1-p.x0;
+      if(p.bridge){ ctx.fillStyle='#c76b3a'; ctx.fillRect(p.x0,p.y,w,14); ctx.fillStyle='#e08a4f'; ctx.fillRect(p.x0,p.y,w,4);
+        ctx.strokeStyle='#8a4a24'; ctx.lineWidth=1; for(let x=p.x0;x<p.x1;x+=14){ctx.beginPath();ctx.moveTo(x,p.y);ctx.lineTo(x,p.y+14);ctx.stroke();} continue; }
+      // wood platform
+      ctx.fillStyle='#a8784e'; ctx.fillRect(p.x0,p.y,w,16);
+      ctx.fillStyle='#c1936a'; ctx.fillRect(p.x0,p.y,w,5);
+      ctx.fillStyle='rgba(0,0,0,.18)'; ctx.fillRect(p.x0,p.y+13,w,3);
+      ctx.strokeStyle='rgba(90,60,35,.5)'; ctx.lineWidth=1; for(let x=p.x0+12;x<p.x1;x+=26){ctx.beginPath();ctx.moveTo(x,p.y+2);ctx.lineTo(x,p.y+14);ctx.stroke();}
+      if(!p.oneway){ ctx.fillStyle=this.dirtPat; ctx.fillRect(p.x0,p.y+16,w,60); ctx.fillStyle='rgba(0,0,0,.15)'; ctx.fillRect(p.x0,p.y+16,w,60); }
+    }
+    // movers
+    for(const m of LEVEL.movers){ const x0=m.x-m.w/2; if(x0>this.cam.x+this.viewW+40||x0+m.w<this.cam.x-40) continue;
+      ctx.fillStyle='#c76b3a'; ctx.fillRect(x0,m.y,m.w,16); ctx.fillStyle='#e08a4f'; ctx.fillRect(x0,m.y,m.w,5);
+      // raft float bob
+      ctx.fillStyle='rgba(255,255,255,.2)'; ctx.fillRect(x0,m.y+2,m.w,2);
+    }
+  },
+  drawDeco(ctx,d){ const t=now()/1000;
+    if(d.t==='tree'){ const x=d.x; const sw=Math.sin(t*1.2+x)*3;
+      ctx.fillStyle='#7a5638'; ctx.fillRect(x-7,GY-56,14,58);
+      ctx.fillStyle='#3f7a33'; ctx.beginPath(); ctx.ellipse(x+sw,GY-96,44,50,0,0,7); ctx.fill();
+      ctx.fillStyle='#4f9a3c'; ctx.beginPath(); ctx.ellipse(x-14+sw,GY-104,30,34,0,0,7); ctx.arc(x+18+sw,GY-98,28,0,7); ctx.fill();
+      ctx.fillStyle='#5fb04a'; ctx.beginPath(); ctx.ellipse(x+sw,GY-120,26,26,0,0,7); ctx.fill(); }
+    else if(d.t==='bush'){ ctx.fillStyle='#4f9a3c'; ctx.beginPath(); ctx.arc(d.x,GY-14,20,0,7); ctx.arc(d.x+22,GY-10,16,0,7); ctx.arc(d.x-20,GY-10,15,0,7); ctx.fill(); }
+    else if(d.t==='house'||d.t==='house2'){ const x=d.x, storm=d.t==='house2';
+      ctx.fillStyle=storm?'#c9d2df':'#efe4cc'; ctx.fillRect(x-60,GY-120,120,120);
+      ctx.fillStyle=storm?'#8a5142':'#b4573f'; ctx.beginPath(); ctx.moveTo(x-74,GY-118); ctx.lineTo(x,GY-190); ctx.lineTo(x+74,GY-118); ctx.closePath(); ctx.fill();
+      ctx.fillStyle=storm?'#6a3f34':'#8a4230'; ctx.fillRect(x-14,GY-56,28,56);
+      ctx.fillStyle='#ffd98a'; ctx.fillRect(x-46,GY-100,30,28); ctx.fillRect(x+16,GY-100,30,28);
+      ctx.strokeStyle='rgba(0,0,0,.2)'; ctx.strokeRect(x-46,GY-100,30,28); ctx.strokeRect(x+16,GY-100,30,28);
+      ctx.fillStyle='#ffc95c'; ctx.beginPath(); ctx.arc(x+9,GY-28,3,0,7); ctx.fill(); }
+    else if(d.t==='gate'){ const x=d.x; ctx.fillStyle='#5b6684';
+      ctx.fillRect(x-70,GY-200,18,200); ctx.fillRect(x+52,GY-200,18,200); ctx.fillRect(x-70,GY-210,140,20);
+      ctx.fillStyle='rgba(56,189,248,.25)'; ctx.fillRect(x-52,GY-190,104,190);
+      ctx.fillStyle='#fda4b0'; ctx.font='900 16px system-ui'; ctx.textAlign='center'; ctx.fillText('⚡ STORMFRONT ⚡',x,GY-96); }
+  },
+  drawFires(ctx){ const t=now()/1000; for(const f of LEVEL.fires){ if(f.x+f.w<this.cam.x-20||f.x>this.cam.x+this.viewW+20)continue;
+    for(let i=0;i<Math.floor(f.w/16);i++){ const fx=f.x+8+i*16, fl=10+Math.sin(t*10+i)*6;
+      ctx.fillStyle='#ff7a2e'; ctx.beginPath(); ctx.moveTo(fx-7,GY); ctx.quadraticCurveTo(fx,GY-22-fl,fx+7,GY); ctx.fill();
+      ctx.fillStyle='#ffd24a'; ctx.beginPath(); ctx.moveTo(fx-4,GY); ctx.quadraticCurveTo(fx,GY-13-fl*.6,fx+4,GY); ctx.fill(); }
+    ctx.fillStyle='rgba(90,60,40,.6)'; ctx.fillRect(f.x,GY-2,f.w,5); } },
+  drawCoins(ctx){ const t=now()/1000; ctx.save(); ctx.shadowColor='#ffc95c'; ctx.shadowBlur=10;
+    for(const c of LEVEL.coins){ if(c.got)continue; if(c.x<this.cam.x-20||c.x>this.cam.x+this.viewW+20)continue;
+      const w=Math.abs(Math.cos(t*3+c.ph))*8+3, by=Math.sin(t*2+c.ph)*3;
+      ctx.fillStyle='#ffb02e'; ctx.beginPath(); ctx.ellipse(c.x,c.y+by,w,11,0,0,7); ctx.fill();
+      ctx.fillStyle='#ffe08a'; ctx.beginPath(); ctx.ellipse(c.x,c.y+by,Math.max(1,w-3),8,0,0,7); ctx.fill();
+      if(w>5){ ctx.fillStyle='#c77c0e'; ctx.font='900 10px system-ui'; ctx.textAlign='center'; ctx.fillText('$',c.x,c.y+by+4); } }
+    ctx.restore(); },
+  drawKeeps(ctx){ const t=now()/1000; for(const k of LEVEL.keeps){ if(k.got)continue; if(k.x<this.cam.x-40||k.x>this.cam.x+this.viewW+40)continue;
+    const by=Math.sin(t*2+k.ph)*5;
+    ctx.save(); ctx.globalAlpha=.2; const bg=ctx.createLinearGradient(k.x,k.y-400,k.x,k.y); bg.addColorStop(0,'rgba(255,201,92,0)'); bg.addColorStop(1,'rgba(255,201,92,.6)');
+    ctx.fillStyle=bg; ctx.fillRect(k.x-9,k.y-400+by,18,400); ctx.restore();
+    ctx.save(); ctx.translate(k.x,k.y+by); ctx.shadowColor='#ffc95c'; ctx.shadowBlur=16;
+    ctx.rotate(Math.sin(t*1.5+k.ph)*.2); this.star(ctx,0,0,15,7,'#ffe08a','#ffb02e'); ctx.restore(); } },
+  star(ctx,x,y,ro,ri,fill,stroke){ ctx.beginPath(); for(let i=0;i<10;i++){ const r=i%2?ri:ro, a=Math.PI/5*i-Math.PI/2;
+    ctx.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r); } ctx.closePath(); ctx.fillStyle=fill; ctx.fill(); if(stroke){ctx.lineWidth=2;ctx.strokeStyle=stroke;ctx.stroke();} },
+  drawStars(ctx){ for(const s of this.stars){ ctx.save(); ctx.translate(s.x,s.y); ctx.rotate(s.ph); ctx.shadowColor='#ffc95c'; ctx.shadowBlur=18;
+    this.star(ctx,0,0,16,7,'#fff2c4','#ffb02e'); ctx.restore();
+    if(s.landed){ ctx.fillStyle='rgba(255,201,92,.5)'; ctx.font='900 11px system-ui'; ctx.textAlign='center'; ctx.fillText('JUMP HERE!',s.x,s.y-28); } } },
+  drawEnemies(ctx){ const t=now()/1000; for(const e of LEVEL.enemies){ if(e.x<this.cam.x-40||e.x>this.cam.x+this.viewW+40)continue;
+    if(!e.alive){ if(e.squash>0){ ctx.fillStyle='#66788f'; ctx.beginPath(); ctx.ellipse(e.x,e.y-4,20*e.squash,6*e.squash,0,0,7); ctx.fill(); } continue; }
+    const bob=Math.abs(Math.sin(e.ph))*3;
+    ctx.save(); ctx.translate(e.x,e.y-bob);
+    // stormlet minion: dark cloud puff body, angry eyes, tiny legs
+    ctx.fillStyle='rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(0,2,20,5,0,0,7); ctx.fill();
+    ctx.fillStyle='#3a4256'; for(const[px,py,pr]of[[-9,-16,11],[9,-16,11],[0,-22,13],[0,-12,15]]){ ctx.beginPath(); ctx.arc(px,py,pr,0,7); ctx.fill(); }
+    ctx.fillStyle='#4a5468'; ctx.beginPath(); ctx.arc(0,-16,13,0,7); ctx.fill();
+    // legs
+    const ls=Math.sin(e.ph*1.5)*3; ctx.strokeStyle='#2a3040'; ctx.lineWidth=3; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(-6,-4); ctx.lineTo(-6,4+ls); ctx.moveTo(6,-4); ctx.lineTo(6,4-ls); ctx.stroke();
+    // angry eyes
+    ctx.fillStyle='#ffe066'; ctx.beginPath(); ctx.arc(-5,-18,3.4,0,7); ctx.arc(5,-18,3.4,0,7); ctx.fill();
+    ctx.fillStyle='#1a1208'; ctx.beginPath(); ctx.arc(-5+e.dir*1,-18,1.6,0,7); ctx.arc(5+e.dir*1,-18,1.6,0,7); ctx.fill();
+    ctx.strokeStyle='#1a1208'; ctx.lineWidth=1.6; ctx.beginPath(); ctx.moveTo(-9,-23); ctx.lineTo(-2,-21); ctx.moveTo(9,-23); ctx.lineTo(2,-21); ctx.stroke();
+    // little bolt
+    ctx.fillStyle='#ffd24a'; ctx.beginPath(); ctx.moveTo(3,-10); ctx.lineTo(-2,-4); ctx.lineTo(1,-4); ctx.lineTo(-3,3); ctx.lineTo(5,-6); ctx.lineTo(2,-6); ctx.closePath(); ctx.fill();
+    ctx.restore(); } },
+
+  drawHero(ctx){ const h=this.hero, t=now()/1000; if(this.iframe>0 && Math.floor(t*16)%2===0) return; // blink on i-frames
+    const P=THEME.hero; ctx.save(); ctx.translate(h.x,h.y);
+    // shadow
+    ctx.fillStyle='rgba(0,0,0,.22)'; ctx.beginPath(); ctx.ellipse(0,0,18,5,0,0,7); ctx.fill();
+    const sx=h.face, run=h.grounded&&Math.abs(h.vx)>30, air=!h.grounded;
+    const sw = run?Math.sin(h.phase):0;
+    const sqY=h.squash, sqX=2-h.squash;
+    ctx.scale(sx*sqX,sqY);
+    // empowered / shield aura
+    if(this.empowered>0){ ctx.save(); ctx.globalAlpha=.5+Math.sin(t*16)*.2; ctx.strokeStyle='#ffd24a'; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.arc(0,-28,34,0,7); ctx.stroke(); ctx.restore(); }
+    // legs
+    const legLift=air?6:0;
+    ctx.strokeStyle=P.pants; ctx.lineWidth=9; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(-6,-14); ctx.lineTo(-6+sw*6,-1-(sw>0?legLift:0)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(6,-14); ctx.lineTo(6-sw*6,-1-(sw<0?legLift:0)); ctx.stroke();
+    // shoes
+    ctx.fillStyle='#2a2f42'; ctx.beginPath(); ctx.ellipse(-6+sw*6,0,6,4,0,0,7); ctx.ellipse(6-sw*6,0,6,4,0,0,7); ctx.fill();
+    // backpack
+    ctx.fillStyle='#e0475b'; ctx.beginPath(); ctx.roundRect(-16,-44,12,22,4); ctx.fill();
+    // body
+    const bg=ctx.createLinearGradient(0,-46,0,-14); bg.addColorStop(0,P.shirt); bg.addColorStop(1,P.shirtDk);
+    ctx.fillStyle=bg; ctx.beginPath(); ctx.roundRect(-13,-46,26,32,10); ctx.fill();
+    // arms
+    ctx.strokeStyle=P.shirt; ctx.lineWidth=7;
+    ctx.beginPath(); ctx.moveTo(-10,-40); ctx.lineTo(-14, air?-48:-30+sw*8); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(10,-40); ctx.lineTo(14, air?-48:-30-sw*8); ctx.stroke();
+    ctx.fillStyle=P.skin; ctx.beginPath(); ctx.arc(-14,air?-48:-30+sw*8,3.5,0,7); ctx.arc(14,air?-48:-30-sw*8,3.5,0,7); ctx.fill();
+    // head
+    ctx.fillStyle=P.skin; ctx.beginPath(); ctx.arc(0,-56,13,0,7); ctx.fill();
+    // hair
+    ctx.fillStyle=P.hair; ctx.beginPath(); ctx.arc(0,-58,13,Math.PI,0); ctx.fill(); ctx.fillRect(-13,-59,26,4);
+    // face
+    const blink=h.blink<.12;
+    ctx.fillStyle='#1a1208';
+    if(blink){ ctx.fillRect(2,-56,5,1.5); } else { ctx.beginPath(); ctx.arc(5,-55,2.1,0,7); ctx.fill(); ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(5.6,-55.6,.7,0,7); ctx.fill(); }
+    ctx.strokeStyle='#8a3d2e'; ctx.lineWidth=1.6; ctx.beginPath(); ctx.arc(4,-49,3.5,.1,Math.PI-.6); ctx.stroke();
+    // cheek
+    ctx.fillStyle='rgba(251,113,133,.4)'; ctx.beginPath(); ctx.arc(8,-50,2.5,0,7); ctx.fill();
+    ctx.restore();
+  },
+  drawAgent(ctx){ if(!this.agent)return; const ag=this.agent, t=now()/1000;
+    if(ag.x<this.cam.x-60||ag.x>this.cam.x+this.viewW+60) return;
+    ctx.save(); ctx.translate(ag.x,ag.y);
+    ctx.fillStyle='rgba(0,0,0,.2)'; ctx.beginPath(); ctx.ellipse(0,0,16,5,0,0,7); ctx.fill();
+    // legs
+    ctx.strokeStyle='#2c3550'; ctx.lineWidth=8; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(-5,-14); ctx.lineTo(-5,-1); ctx.moveTo(5,-14); ctx.lineTo(5,-1); ctx.stroke();
+    // gold blazer body
+    const bg=ctx.createLinearGradient(0,-44,0,-14); bg.addColorStop(0,'#f4c33f'); bg.addColorStop(1,'#d89f28');
+    ctx.fillStyle=bg; ctx.beginPath(); ctx.roundRect(-13,-44,26,30,9); ctx.fill();
+    // lapel + badge
+    ctx.fillStyle='#fff'; ctx.beginPath(); ctx.moveTo(0,-44); ctx.lineTo(-5,-30); ctx.lineTo(0,-26); ctx.lineTo(5,-30); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#ffc95c'; ctx.beginPath(); ctx.arc(6,-38,2.2,0,7); ctx.fill();
+    // waving arm
+    const wave=ag.wave??Math.sin(t*3);
+    ctx.strokeStyle='#f4c33f'; ctx.lineWidth=7;
+    ctx.beginPath(); ctx.moveTo(10,-40); ctx.lineTo(16,-52+wave*6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-10,-40); ctx.lineTo(-15,-30); ctx.stroke();
+    ctx.fillStyle='#e8b48c'; ctx.beginPath(); ctx.arc(16,-52+wave*6,3.5,0,7); ctx.arc(-15,-30,3.5,0,7); ctx.fill();
+    // head + bun
+    ctx.fillStyle='#e8b48c'; ctx.beginPath(); ctx.arc(0,-54,12,0,7); ctx.fill();
+    ctx.fillStyle='#3a2c1c'; ctx.beginPath(); ctx.arc(0,-56,12,Math.PI,0); ctx.fill(); ctx.beginPath(); ctx.arc(0,-64,5,0,7); ctx.fill();
+    ctx.fillStyle='#1a1208'; ctx.beginPath(); ctx.arc(4,-53,2,0,7); ctx.arc(-4,-53,2,0,7); ctx.fill();
+    ctx.strokeStyle='#8a3d2e'; ctx.lineWidth=1.5; ctx.beginPath(); ctx.arc(0,-48,3,.1,Math.PI-.1); ctx.stroke();
+    // name tag
+    ctx.fillStyle='rgba(10,15,32,.8)'; ctx.beginPath(); ctx.roundRect(-30,-92,60,15,7); ctx.fill();
+    ctx.fillStyle='#ffc95c'; ctx.font='900 10px system-ui'; ctx.textAlign='center'; ctx.fillText('⭐ '+AG.name.split(' ')[0],0,-81);
+    ctx.restore();
+  },
+  drawHail(ctx){ for(const p of this.hail){ if(p.x<this.cam.x-20||p.x>this.cam.x+this.viewW+20)continue;
+    ctx.save(); ctx.translate(p.x,p.y);
+    if(p.fromBoss){ ctx.fillStyle='#7c5cff'; ctx.shadowColor='#8b5cf6'; ctx.shadowBlur=10; this.star(ctx,0,0,9,4,'#c4b5ff','#7c5cff'); }
+    else { ctx.fillStyle='#dbeeff'; ctx.beginPath(); ctx.moveTo(0,-7); ctx.lineTo(4,0); ctx.lineTo(0,7); ctx.lineTo(-4,0); ctx.closePath(); ctx.fill();
+      ctx.fillStyle='rgba(255,255,255,.7)'; ctx.fillRect(-1,-4,2,4); }
+    ctx.restore(); } },
+  drawBoss(ctx){ const b=this.boss; if(!b)return; const t=now()/1000; const bx=b.x, by=b.y+b.bob;
+    if(b.dead){ // poof
+      ctx.save(); ctx.globalAlpha=Math.max(0,1-(1-this.dead)); ctx.restore(); }
+    ctx.save(); ctx.translate(bx,by);
+    if(b.flash>0){ ctx.globalAlpha=.5+Math.sin(t*40)*.3; }
+    // storm cloud body
+    ctx.fillStyle=b.hurt>0&&Math.floor(t*20)%2?'#fff':'#37405a';
+    for(const[px,py,pr]of[[-30,0,30],[30,0,30],[0,-14,38],[-14,10,26],[16,10,26],[0,6,34]]){ ctx.beginPath(); ctx.arc(px,py,pr,0,7); ctx.fill(); }
+    ctx.fillStyle=b.hurt>0&&Math.floor(t*20)%2?'#fff':'#454f6e'; ctx.beginPath(); ctx.arc(0,-4,34,0,7); ctx.fill();
+    // glowing eyes
+    ctx.fillStyle='#ffe066'; ctx.shadowColor='#ffe066'; ctx.shadowBlur=12;
+    ctx.beginPath(); ctx.ellipse(-13,-6,7,9,0,0,7); ctx.ellipse(13,-6,7,9,0,0,7); ctx.fill(); ctx.shadowBlur=0;
+    ctx.fillStyle='#1a1208'; ctx.beginPath(); ctx.arc(-13,-3,3,0,7); ctx.arc(13,-3,3,0,7); ctx.fill();
+    // angry brows
+    ctx.strokeStyle='#1a1208'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(-22,-16); ctx.lineTo(-7,-11); ctx.moveTo(22,-16); ctx.lineTo(7,-11); ctx.stroke();
+    // jagged mouth
+    ctx.fillStyle='#1a1208'; ctx.beginPath(); ctx.moveTo(-14,10); for(let i=0;i<=6;i++){ ctx.lineTo(-14+i*4.6, 10+(i%2?7:0)); } ctx.lineTo(14,10); ctx.closePath(); ctx.fill();
+    // bolts around him
+    for(let i=0;i<3;i++){ const a=t*2+i*2.1, r=52; ctx.fillStyle='#ffd24a'; ctx.save(); ctx.translate(Math.cos(a)*r,Math.sin(a)*r*.5);
+      ctx.beginPath(); ctx.moveTo(2,-8); ctx.lineTo(-3,-1); ctx.lineTo(1,-1); ctx.lineTo(-3,7); ctx.lineTo(5,-3); ctx.lineTo(1,-3); ctx.closePath(); ctx.fill(); ctx.restore(); }
+    // crown of storm
+    ctx.restore();
+    // name float
+    ctx.fillStyle='rgba(10,15,32,.7)'; ctx.beginPath(); ctx.roundRect(bx-46,by-80,92,17,8); ctx.fill();
+    ctx.fillStyle='#fda4b0'; ctx.font='900 12px system-ui'; ctx.textAlign='center'; ctx.fillText('🌩️ '+THEME.villain.name,bx,by-68);
+  },
+  drawParticles(ctx){ for(const p of this.particles){ ctx.globalAlpha=clamp(p.life,0,1); ctx.fillStyle=p.color;
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,7); ctx.fill(); } ctx.globalAlpha=1; },
+
+  mixHex(a,b,t){ const pa=parseInt(a.slice(1),16), pb=parseInt(b.slice(1),16);
+    const r=Math.round(lerp((pa>>16)&255,(pb>>16)&255,t)), g=Math.round(lerp((pa>>8)&255,(pb>>8)&255,t)), bl=Math.round(lerp(pa&255,pb&255,t));
+    return `rgb(${r},${g},${bl})`; },
 };
+function cam0(g){ return g.cam.x-20; }
+
 Game.init();
-window.CQ3D={Game,Input,Branding,UI,SFX};
+window.CQ={Game,Input,UI,SFX,LEVEL,THEME,AG};
 </script>
 </body>
 </html>
